@@ -20,9 +20,23 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
 # User mapping (could be stored in a database)
 user_map = {
-    '+1234567890': 'john_doe',
-    '+9876543210': 'jane_smith',
-    # Add more mappings as needed
+    "'+447387303123": "Aaron",
+    "'+16043175991": "Adam",
+    "'+64272806500": "Aubrey",
+    "'+31618271215": "Ben",
+    "'+447950139194": "Calum",
+    "'+447950904385": "Dave S",
+    "'+447950904385": "David C",
+    "'+64211206201": "Dom",
+    "'+447871617112": "Fraser",
+    "'+447587626672": "Jerome",
+    "'+6421581535": "John",
+    "'+447517587086": "Joss",
+    "'+447399224773": "Larry",
+    "'+33699389571": "Mike",
+    "'+447375356774": "Peter",
+    "'+447526186549": "Rohan",
+    "'+447438895095": "Sam"
 }
 
 def get_google_sheet():
