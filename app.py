@@ -50,7 +50,7 @@ def whatsapp_webhook():
                 deadline_str = format_deadline(deadline)
                 user_name = user_map.get(from_number, from_number)
                 response_text = (
-                    f"✅ {user_name}: Gameweek {current_gameweek} picks saved!\n"
+                    f"✅ GW{current_gameweek} picks saved for {user_name}!\n"
                     f"🎯 {', '.join(players)}\n"
                     f"⏰ Deadline: {deadline_str}"
                 )
