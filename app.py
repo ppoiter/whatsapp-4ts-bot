@@ -1,11 +1,10 @@
+from constants import USER_MAP
 from flask import Flask, request
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
-import gspread
-from google.oauth2.service_account import Credentials
 import os
-from datetime import datetime
-import re
+
+from utils import get_current_gameweek, is_deadline_passed, parse_player_picks, add_to_google_sheet, format_deadline, get_google_sheet
 
 app = Flask(__name__)
 
@@ -14,130 +13,59 @@ account_sid = os.environ['TWILIO_ACCOUNT_SID']
 auth_token = os.environ['TWILIO_AUTH_TOKEN']
 twilio_client = Client(account_sid, auth_token)
 
-# Google Sheets setup
-SPREADSHEET_ID = os.environ.get('GOOGLE_SHEET_ID', 'your-google-sheet-id')
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-
-# User mapping (could be stored in a database)
-user_map = {
-    "'+447387303123": "Aaron",
-    "'+16043175991": "Adam",
-    "'+64272806500": "Aubrey",
-    "'+31618271215": "Ben",
-    "'+447950139194": "Calum",
-    "'+447950904385": "Dave S",
-    "'+447950904385": "David C",
-    "'+64211206201": "Dom",
-    "'+447871617112": "Fraser",
-    "'+447587626672": "Jerome",
-    "'+6421581535": "John",
-    "'+447517587086": "Joss",
-    "'+447399224773": "Larry",
-    "'+33699389571": "Mike",
-    "'+447375356774": "Peter",
-    "'+447526186549": "Rohan",
-    "'+447438895095": "Sam"
-}
-
-def get_google_sheet():
-    """Initialize Google Sheets connection"""
-    try:
-        # Load credentials from environment variable
-        creds = Credentials.from_service_account_info({
-            "type": "service_account",
-            "project_id": os.environ['GOOGLE_PROJECT_ID'],
-            "private_key_id": os.environ['GOOGLE_PRIVATE_KEY_ID'],
-            "private_key": os.environ['GOOGLE_PRIVATE_KEY'].replace('\\n', '\n'),
-            "client_email": os.environ['GOOGLE_CLIENT_EMAIL'],
-            "client_id": os.environ['GOOGLE_CLIENT_ID'],
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-        }, scopes=SCOPES)
-        
-        gc = gspread.authorize(creds)
-        return gc.open_by_key(SPREADSHEET_ID).sheet1
-    except Exception as e:
-        print(f"Error connecting to Google Sheets: {e}")
-        return None
-
-def parse_player_picks(message_body):
-    """Parse player names from WhatsApp message"""
-    lines = message_body.strip().split('\n')
-    players = []
-    
-    for line in lines:
-        # Clean up the line
-        cleaned = line.strip()
-        # Skip empty lines and lines that are just numbers
-        if cleaned and not re.match(r'^\d+$', cleaned):
-            players.append(cleaned)
-    
-    return players
-
-def add_to_google_sheet(phone_number, players):
-    """Add player picks to Google Sheets"""
-    try:
-        sheet = get_google_sheet()
-        if not sheet:
-            raise Exception("Could not connect to Google Sheets")
-        
-        # Get user identity
-        user_id = user_map.get(phone_number, phone_number)
-        
-        # Prepare row data
-        row_data = [
-            datetime.now().isoformat(),  # Timestamp
-            phone_number,                # Phone Number
-            user_id,                     # User ID
-            players[0] if len(players) > 0 else '',  # Player 1
-            players[1] if len(players) > 1 else '',  # Player 2
-            players[2] if len(players) > 2 else '',  # Player 3
-            players[3] if len(players) > 3 else '',  # Player 4
-        ]
-        
-        # Add row to sheet
-        sheet.append_row(row_data)
-        print(f"Added picks for {user_id}: {', '.join(players)}")
-        return True
-        
-    except Exception as e:
-        print(f"Error adding to sheet: {e}")
-        return False
+user_map = USER_MAP
 
 @app.route('/webhook', methods=['POST'])
 def whatsapp_webhook():
     """Handle incoming WhatsApp messages"""
     try:
-        # Get message details
         from_number = request.form.get('From', '').replace('whatsapp:', '')
-        to_number = request.form.get('To', '')
         message_body = request.form.get('Body', '')
         
         print(f"Received message from {from_number}: {message_body}")
         
+        # Check current gameweek
+        current_gameweek, deadline = get_current_gameweek()
+        
+        if not current_gameweek:
+            resp = MessagingResponse()
+            resp.message("🚫 No active gameweek found. Please check back when the new season starts!")
+            return str(resp)
+        
+        # Check if deadline has passed
+        if is_deadline_passed(current_gameweek):
+            resp = MessagingResponse()
+            resp.message(f"⏰ Sorry! The deadline for Gameweek {current_gameweek} has passed.")
+            return str(resp)
+        
         # Parse player picks
         players = parse_player_picks(message_body)
-        
-        # Create response
         resp = MessagingResponse()
         
         if len(players) == 4:
             # Valid picks - add to sheet
-            success = add_to_google_sheet(from_number, players)
+            success, result = add_to_google_sheet(from_number, players, current_gameweek, deadline)
             
             if success:
-                response_text = f"✅ Got your picks: {', '.join(players)}"
+                deadline_str = format_deadline(deadline)
+                user_name = user_map.get(from_number, from_number)
+                response_text = (
+                    f"✅ {user_name}: Gameweek {current_gameweek} picks saved!\n"
+                    f"🎯 {', '.join(players)}\n"
+                    f"⏰ Deadline: {deadline_str}"
+                )
             else:
                 response_text = "❌ Sorry, there was an error saving your picks. Please try again."
         else:
-            # Invalid format
+            deadline_str = format_deadline(deadline)
             response_text = (
-                "❌ Please send exactly 4 player names, one per line.\n\n"
-                "Example:\n"
-                "Gyokeres\n"
-                "Salah\n"
-                "Sesko\n"
-                "Haaland"
+                f"❌ Please send exactly 4 player names for Gameweek {current_gameweek}\n\n"
+                f"Example:\n"
+                f"Haaland\n"
+                f"Salah\n"
+                f"Saka\n"
+                f"Palmer\n\n"
+                f"⏰ Deadline: {deadline_str}"
             )
         
         resp.message(response_text)
@@ -152,16 +80,38 @@ def whatsapp_webhook():
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
-    return {'status': 'OK', 'message': 'WhatsApp bot is running'}, 200
+    current_gw, deadline = get_current_gameweek()
+    return {
+        'status': 'OK', 
+        'message': 'WhatsApp bot is running',
+        'current_gameweek': current_gw,
+        'deadline': deadline.isoformat() if deadline else None
+    }, 200
+
+@app.route('/gameweek-info', methods=['GET'])
+def gameweek_info():
+    """API endpoint to check current gameweek status"""
+    current_gw, deadline = get_current_gameweek()
+    
+    if current_gw:
+        deadline_passed = is_deadline_passed(current_gw)
+        return {
+            'gameweek': current_gw,
+            'deadline': deadline.isoformat(),
+            'deadline_formatted': format_deadline(deadline),
+            'deadline_passed': deadline_passed,
+            'status': 'closed' if deadline_passed else 'open'
+        }
+    else:
+        return {'status': 'no_active_gameweek'}
 
 def setup_google_sheet_headers():
     """Set up the headers in Google Sheets (run once)"""
     try:
         sheet = get_google_sheet()
         if sheet:
-            headers = ['Timestamp', 'Phone Number', 'User ID', 'Player 1', 'Player 2', 'Player 3', 'Player 4']
+            headers = ['Timestamp', 'Phone Number', 'User ID', 'Gameweek', 'Deadline', 'Player 1', 'Player 2', 'Player 3', 'Player 4']
             
-            # Check if headers already exist
             if not sheet.row_values(1):
                 sheet.insert_row(headers, 1)
                 print("Headers added to Google Sheet")
@@ -172,9 +122,6 @@ def setup_google_sheet_headers():
         print(f"Error setting up headers: {e}")
 
 if __name__ == '__main__':
-    # Set up Google Sheet headers on startup
     setup_google_sheet_headers()
-    
-    # Run the Flask app
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=os.environ.get('DEBUG', 'False').lower() == 'true')
