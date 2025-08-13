@@ -1,7 +1,7 @@
 from google.oauth2.service_account import Credentials
 import pytz
 from datetime import datetime, timedelta
-from constants import GAMEWEEK_SCHEDULE, SPREADSHEET_ID, SCOPES, USER_MAP
+from constants import GAMEWEEK_SCHEDULE, SPREADSHEET_ID, SCOPES, USER_MAP, ADMIN_PHONE
 import gspread
 import os
 import re
@@ -235,5 +235,114 @@ def schedule_gameweek_reminders(twilio_client):
                 name=f'Gameweek {gw_num} Reminder'
             )
             print(f"Scheduled reminder for GW{gw_num} at {reminder_time}")
+    
+    return scheduler
+
+
+def get_all_picks_for_gameweek(gameweek_num):
+    """Get all picks submitted for a gameweek, taking latest submission per user"""
+    try:
+        sheet = get_google_sheet()
+        if not sheet:
+            return {}
+        
+        all_records = sheet.get_all_records()
+        
+        # Dictionary to store latest picks per user
+        user_picks = {}
+        
+        for record in all_records:
+            if record.get('Gameweek') == gameweek_num:
+                phone = record.get('Phone Number')
+                timestamp = record.get('Timestamp')
+                
+                # Get the 4 players
+                players = []
+                for i in range(1, 5):
+                    player = record.get(f'Player {i}', '').strip()
+                    if player:
+                        players.append(player)
+                
+                if phone and players:
+                    # Check if we already have picks for this user
+                    if phone not in user_picks or timestamp > user_picks[phone]['timestamp']:
+                        user_picks[phone] = {
+                            'players': players,
+                            'timestamp': timestamp,
+                            'user_name': user_map.get(phone, phone)
+                        }
+        
+        return user_picks
+        
+    except Exception as e:
+        print(f"Error getting picks: {e}")
+        return {}
+
+def send_deadline_summary(gameweek_num, twilio_client):
+    """Send summary of all picks to admin after deadline"""
+    try:        
+        # Get all submitted picks
+        submitted_picks = get_all_picks_for_gameweek(gameweek_num)
+        
+        # Build the summary message
+        message = f"📊 GAMEWEEK {gameweek_num} FINAL PICKS\n"
+        message += "=" * 25 + "\n\n"
+        
+        # Track who hasn't submitted
+        users_without_picks = []
+        
+        # Check all users in USER_MAP
+        for phone, name in user_map.items():
+            if phone in submitted_picks:
+                # User submitted picks
+                picks = submitted_picks[phone]['players']
+                message += f"✅ {name}: {', '.join(picks)}\n"
+            else:
+                # User didn't submit
+                users_without_picks.append(name)
+        
+        # Add section for users who didn't submit
+        if users_without_picks:
+            message += "❌ NO PICKS SUBMITTED:\n"
+            for name in users_without_picks:
+                message += f"  • {name}\n"
+            message += "\n"
+        
+        # Add summary stats
+        message += f"📈 Total submitted: {len(submitted_picks)}/{len(user_map)}"
+        
+        # Send to admin
+        twilio_client.messages.create(
+            body=message,
+            from_='whatsapp:+14155238886',
+            to=f'whatsapp:{ADMIN_PHONE}'
+        )
+        print(f"Deadline summary sent for GW{gameweek_num}")
+        
+    except Exception as e:
+        print(f"Error sending deadline summary: {e}")
+
+def schedule_deadline_summaries(twilio_client):
+    """Schedule summary messages for all gameweek deadlines"""
+    scheduler = BackgroundScheduler(timezone=get_uk_timezone())
+    
+    for gw_num, start_date, deadline in GAMEWEEK_SCHEDULE:
+        # Schedule summary 1 minute after deadline
+        summary_time = deadline + timedelta(minutes=1)
+        
+        # Only schedule if time is in the future
+        uk_tz = get_uk_timezone()
+        now = datetime.now(uk_tz).replace(tzinfo=None)
+        uk_summary = uk_tz.localize(summary_time).replace(tzinfo=None)
+        
+        if uk_summary > now:
+            trigger = DateTrigger(run_date=summary_time, timezone=uk_tz)
+            scheduler.add_job(
+                lambda gw=gw_num: send_deadline_summary(gw, twilio_client),
+                trigger=trigger,
+                id=f'gw_{gw_num}_summary',
+                name=f'Gameweek {gw_num} Summary'
+            )
+            print(f"Scheduled summary for GW{gw_num} at {summary_time}")
     
     return scheduler

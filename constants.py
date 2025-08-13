@@ -39,3 +39,5 @@ USER_MAP = {
 # Google Sheets setup
 SPREADSHEET_ID = os.environ.get('GOOGLE_SHEET_ID', 'your-google-sheet-id')
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+
+ADMIN_PHONE = "+447375356774"
