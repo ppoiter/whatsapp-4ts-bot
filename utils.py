@@ -163,12 +163,9 @@ def get_users_without_picks(gameweek_num):
                 if phone:
                     users_submitted.add(phone)
         
-        # Get registered users from constants
-        from constants import REGISTERED_USERS
-        
         # Find users who haven't submitted
         users_without_picks = []
-        for phone in REGISTERED_USERS:
+        for phone in USER_MAP:
             if phone not in users_submitted:
                 users_without_picks.append(phone)
         
