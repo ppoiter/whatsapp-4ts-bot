@@ -123,3 +123,21 @@ def add_to_google_sheet(phone_number, players, gameweek_num, deadline):
     except Exception as e:
         print(f"Error adding to sheet: {e}")
         return False, "error"
+
+
+def send_instructions(current_gameweek, deadline):
+    """Generate welcome/instructions message"""
+    deadline_str = format_deadline(deadline)
+
+    return (
+        f"⚽ Welcome to the 4 To Score Picks Bot ⚽\n"
+        f"📝 To submit picks for Gameweek {current_gameweek}:\n"
+        f"Send 4 player names, one per line:\n\n"
+        f"Example:\n"
+        f"Haaland\n"
+        f"Salah\n"
+        f"Saka\n"
+        f"Palmer\n\n"
+        f"⏰ Deadline: {deadline_str}\n"
+        f"✅ You can update picks by sending new ones\n"
+    )
