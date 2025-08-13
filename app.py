@@ -4,7 +4,7 @@ from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 import os
 
-from utils import get_current_gameweek, is_deadline_passed, parse_player_picks, add_to_google_sheet, format_deadline, get_google_sheet, schedule_gameweek_reminders, schedule_deadline_summaries
+from utils import get_current_gameweek, is_deadline_passed, parse_player_picks, add_to_google_sheet, format_deadline, get_google_sheet, schedule_gameweek_reminders, schedule_deadline_summaries, send_reminders_for_gameweek, send_deadline_summary
 
 app = Flask(__name__)
 
@@ -14,6 +14,24 @@ auth_token = os.environ['TWILIO_AUTH_TOKEN']
 twilio_client = Client(account_sid, auth_token)
 
 user_map = USER_MAP
+
+@app.route('/send-reminders', methods=['POST'])
+def manual_reminder_trigger():
+    """Manually trigger reminders for testing"""
+    try:
+        send_reminders_for_gameweek(twilio_client)
+        return {'status': 'success', 'message': 'Reminders sent'}, 200
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}, 500
+
+@app.route('/send-summary/<int:gameweek>', methods=['POST'])
+def manual_summary_trigger(gameweek):
+    """Manually trigger summary for testing"""
+    try:
+        send_deadline_summary(gameweek, twilio_client)
+        return {'status': 'success', 'message': f'Summary sent for GW{gameweek}'}, 200
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}, 500
 
 @app.route('/webhook', methods=['POST'])
 def whatsapp_webhook():
