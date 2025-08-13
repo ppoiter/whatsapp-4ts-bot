@@ -4,7 +4,7 @@ from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 import os
 
-from utils import get_current_gameweek, is_deadline_passed, parse_player_picks, add_to_google_sheet, format_deadline, get_google_sheet
+from utils import get_current_gameweek, is_deadline_passed, parse_player_picks, add_to_google_sheet, format_deadline, get_google_sheet, schedule_gameweek_reminders
 
 app = Flask(__name__)
 
@@ -123,5 +123,15 @@ def setup_google_sheet_headers():
 
 if __name__ == '__main__':
     setup_google_sheet_headers()
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=os.environ.get('DEBUG', 'False').lower() == 'true')
+    
+    # Start the reminder scheduler
+    scheduler = schedule_gameweek_reminders(twilio_client)
+    scheduler.start()
+    print("Reminder scheduler started")
+    
+    # Keep scheduler running with the app
+    try:
+        port = int(os.environ.get('PORT', 5000))
+        app.run(host='0.0.0.0', port=port, debug=os.environ.get('DEBUG', 'False').lower() == 'true')
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()
