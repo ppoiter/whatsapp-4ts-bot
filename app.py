@@ -143,10 +143,10 @@ def setup_google_sheet_headers():
 if __name__ == '__main__':
     setup_google_sheet_headers()
     
-    # Start the reminder scheduler
-    reminder_scheduler = schedule_gameweek_reminders(twilio_client)
-    reminder_scheduler.start()
-    print("Reminder scheduler started")
+    # # Start the reminder scheduler
+    # reminder_scheduler = schedule_gameweek_reminders(twilio_client)
+    # reminder_scheduler.start()
+    # print("Reminder scheduler started")
     
     # Start the deadline summary scheduler
     summary_scheduler = schedule_deadline_summaries(twilio_client)
@@ -158,5 +158,5 @@ if __name__ == '__main__':
         port = int(os.environ.get('PORT', 5000))
         app.run(host='0.0.0.0', port=port, debug=os.environ.get('DEBUG', 'False').lower() == 'true')
     except (KeyboardInterrupt, SystemExit):
-        reminder_scheduler.shutdown()
+        # reminder_scheduler.shutdown()
         summary_scheduler.shutdown()

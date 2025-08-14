@@ -314,8 +314,8 @@ def send_deadline_summary(gameweek_num, twilio_client):
                 message += f"  • {name}\n"
             message += "\n"
         
-        # Add summary stats
-        message += f"📈 Total submitted: {len(submitted_picks)}/{len(user_map)}"
+        # # Add summary stats
+        # message += f"📈 Total submitted: {len(submitted_picks)}/{len(user_map)}"
         
         # Send to admin
         twilio_client.messages.create(
