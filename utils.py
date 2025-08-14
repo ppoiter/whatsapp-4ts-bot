@@ -252,8 +252,10 @@ def get_all_picks_for_gameweek(gameweek_num):
         user_picks = {}
         
         for record in all_records:
-            if record.get('Gameweek') == gameweek_num:
-                phone = record.get('Phone Number')
+            if str(record.get('Gameweek')) == str(gameweek_num):
+                # Phone number comes as integer, need to add + back
+                phone_int = record.get('Phone Number')
+                phone = f'+{phone_int}' if phone_int else None
                 timestamp = record.get('Timestamp')
                 
                 # Get the 4 players
@@ -273,6 +275,10 @@ def get_all_picks_for_gameweek(gameweek_num):
                         }
         
         return user_picks
+        
+    except Exception as e:
+        print(f"Error getting picks: {e}")
+        return {}
         
     except Exception as e:
         print(f"Error getting picks: {e}")
