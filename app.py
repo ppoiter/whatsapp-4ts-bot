@@ -1,4 +1,4 @@
-from constants import USER_MAP
+from constants import USER_MAP, ADMIN_PHONE
 from flask import Flask, request
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
@@ -55,6 +55,19 @@ def whatsapp_webhook():
             resp = MessagingResponse()
             resp.message(f"⏰ Sorry! The deadline for Gameweek {current_gameweek} has passed.")
             return str(resp)
+
+        # ADD THIS NEW SECTION - Check for summary request
+        if message_body.lower().strip() == 'show picks':
+            # Check if this is the admin
+            if from_number == ADMIN_PHONE.lstrip('+'):  # Remove + for comparison
+                send_deadline_summary(current_gameweek)
+                resp = MessagingResponse()
+                resp.message(f"📊 Sending Gameweek {current_gameweek} summary...")
+                return str(resp)
+            else:
+                resp = MessagingResponse()
+                resp.message("⛔ Only the admin can request summaries.")
+                return str(resp)
         
         # Parse player picks
         players = parse_player_picks(message_body)
