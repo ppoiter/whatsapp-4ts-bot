@@ -56,18 +56,18 @@ def whatsapp_webhook():
             resp.message(f"⏰ Sorry! The deadline for Gameweek {current_gameweek} has passed.")
             return str(resp)
 
-        # ADD THIS NEW SECTION - Check for summary request
-        if message_body.lower().strip() == 'show picks':
-            # Check if this is the admin
-            if from_number == ADMIN_PHONE.lstrip('+'):  # Remove + for comparison
-                send_deadline_summary(current_gameweek)
-                resp = MessagingResponse()
-                resp.message(f"📊 Sending Gameweek {current_gameweek} summary...")
-                return str(resp)
-            else:
-                resp = MessagingResponse()
-                resp.message("⛔ Only the admin can request summaries.")
-                return str(resp)
+        # # ADD THIS NEW SECTION - Check for summary request
+        # if message_body.lower().strip() == 'show picks':
+        #     # Check if this is the admin
+        #     if from_number == ADMIN_PHONE.lstrip('+'):  # Remove + for comparison
+        #         send_deadline_summary(current_gameweek)
+        #         resp = MessagingResponse()
+        #         resp.message(f"📊 Sending Gameweek {current_gameweek} summary...")
+        #         return str(resp)
+        #     else:
+        #         resp = MessagingResponse()
+        #         resp.message("⛔ Only the admin can request summaries.")
+        #         return str(resp)
         
         # Parse player picks
         players = parse_player_picks(message_body)
@@ -107,6 +107,15 @@ def whatsapp_webhook():
         resp = MessagingResponse()
         resp.message("❌ Sorry, something went wrong. Please try again.")
         return str(resp)
+
+@app.route('/summary', methods=['GET'])
+def get_summary():
+    """Simple GET endpoint for browser access"""
+    current_gw, _ = get_current_gameweek()
+    if current_gw:
+        send_deadline_summary(current_gw)
+        return f"✅ Summary sent for Gameweek {current_gw}", 200
+    return "No active gameweek", 400
 
 @app.route('/health', methods=['GET'])
 def health_check():
