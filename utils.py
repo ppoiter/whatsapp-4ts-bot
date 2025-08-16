@@ -284,9 +284,33 @@ def get_all_picks_for_gameweek(gameweek_num):
         print(f"Error getting picks: {e}")
         return {}
 
-def send_deadline_summary(gameweek_num, twilio_client):
+def send_deadline_summary(gameweek_num=None, twilio_client=None):
     """Send summary of all picks to admin after deadline"""
-    try:        
+    try:
+        from constants import ADMIN_PHONE
+        
+        # If no gameweek specified, determine which one to show
+        if gameweek_num is None:
+            uk_tz = get_uk_timezone()
+            now = datetime.now(uk_tz).replace(tzinfo=None)
+            
+            # Check recent gameweeks (within 24 hours of deadline)
+            for gw_num, start_date, deadline in GAMEWEEK_SCHEDULE:
+                uk_deadline = uk_tz.localize(deadline).replace(tzinfo=None)
+                time_since_deadline = now - uk_deadline
+                
+                # If we're within 24 hours after the deadline, use this gameweek
+                if timedelta(0) <= time_since_deadline <= timedelta(hours=24):
+                    gameweek_num = gw_num
+                    break
+            
+            # If no recent deadline, use current gameweek
+            if gameweek_num is None:
+                gameweek_num, _ = get_current_gameweek()
+                if not gameweek_num:
+                    print("No active or recent gameweek found")
+                    return
+        
         # Get all submitted picks
         submitted_picks = get_all_picks_for_gameweek(gameweek_num)
         
@@ -309,13 +333,10 @@ def send_deadline_summary(gameweek_num, twilio_client):
         
         # Add section for users who didn't submit
         if users_without_picks:
-            message += "❌ NO PICKS SUBMITTED:\n"
+            message += "\n❌ NO PICKS SUBMITTED:\n"
             for name in users_without_picks:
                 message += f"  • {name}\n"
             message += "\n"
-        
-        # # Add summary stats
-        # message += f"📈 Total submitted: {len(submitted_picks)}/{len(user_map)}"
         
         # Send to admin
         twilio_client.messages.create(
@@ -323,7 +344,6 @@ def send_deadline_summary(gameweek_num, twilio_client):
             from_='whatsapp:+14155238886',
             to=f'whatsapp:{ADMIN_PHONE}'
         )
-        print(f"Deadline summary sent for GW{gameweek_num}")
         
     except Exception as e:
         print(f"Error sending deadline summary: {e}")
