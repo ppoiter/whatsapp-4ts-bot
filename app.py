@@ -60,7 +60,7 @@ def whatsapp_webhook():
         if message_body.lower().strip() == 'show picks':
             # Check if this is the admin
             if from_number == ADMIN_PHONE:  # Remove + for comparison
-                send_deadline_summary(current_gameweek)
+                send_deadline_summary(current_gameweek, twilio_client)
                 resp = MessagingResponse()
                 resp.message(f"📊 Sending Gameweek {current_gameweek} summary...")
                 return str(resp)
@@ -119,7 +119,7 @@ def get_summary():
         current_gw, _ = get_current_gameweek()
         
         if current_gw:
-            send_deadline_summary(current_gw)
+            send_deadline_summary(current_gw, twilio_client)
             return f"✅ Summary sent for Gameweek {current_gw} to {ADMIN_PHONE}", 200
         else:
             return "No active gameweek", 400
