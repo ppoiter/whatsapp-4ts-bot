@@ -111,11 +111,22 @@ def whatsapp_webhook():
 @app.route('/summary', methods=['GET'])
 def get_summary():
     """Simple GET endpoint for browser access"""
-    current_gw, _ = get_current_gameweek()
-    if current_gw:
-        send_deadline_summary(current_gw)
-        return f"✅ Summary sent for Gameweek {current_gw}", 200
-    return "No active gameweek", 400
+    try:
+        # Import ADMIN_PHONE if not already imported
+        from constants import ADMIN_PHONE
+        
+        # Get current gameweek
+        current_gw, _ = get_current_gameweek()
+        
+        if current_gw:
+            send_deadline_summary(current_gw)
+            return f"✅ Summary sent for Gameweek {current_gw} to {ADMIN_PHONE}", 200
+        else:
+            return "No active gameweek", 400
+            
+    except Exception as e:
+        print(f"Error in get_summary: {e}")
+        return f"Error: {str(e)}", 500
 
 @app.route('/health', methods=['GET'])
 def health_check():
