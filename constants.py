@@ -9,11 +9,13 @@ GAMEWEEK_SCHEDULE = [
     # Add more gameweeks as you get the fixture dates
     # Example format for subsequent gameweeks:
     (2, datetime(2025, 8, 22), datetime(2025, 8, 22, 18, 30)),
-    (3, datetime(2025, 8, 29), datetime(2025, 8, 29, 18, 30)),
+    (3, datetime(2025, 8, 30), datetime(2025, 8, 30, 11, 00)),
     (4, datetime(2025, 9, 13), datetime(2025, 9, 13, 11, 00)),
     (5, datetime(2025, 9, 20), datetime(2025, 9, 20, 11, 00)),
     (6, datetime(2025, 9, 27), datetime(2025, 9, 27, 11, 00)),
-    # etc...
+    (7, datetime(2025, 10, 3), datetime(2025, 10, 3, 18, 30)),
+    (8, datetime(2025, 10, 18), datetime(2025, 10, 18, 11, 00)),
+    (9, datetime(2025, 10, 24), datetime(2025, 10, 24, 20, 00)),
 ]
 
 # User mapping

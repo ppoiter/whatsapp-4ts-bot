@@ -175,69 +175,6 @@ def get_users_without_picks(gameweek_num):
         print(f"Error checking submissions: {e}")
         return []
 
-def send_reminder(phone_number, gameweek_num, deadline, twilio_client):
-    """Send reminder message to a single user"""
-    try:
-        user_name = user_map.get(phone_number, "Player")
-        deadline_str = deadline.strftime("%H:%M")
-        
-        message = (
-            f"⏰ Reminder: {user_name}, you haven't submitted your picks for Gameweek {gameweek_num}!\n\n"
-            f"🚨 Deadline is in 12 hours: {deadline_str}\n\n"
-        )
-        
-        twilio_client.messages.create(
-            body=message,
-            from_='whatsapp:+14155238886',  # Your Twilio sandbox number
-            to=f'whatsapp:{phone_number}'
-        )
-        print(f"Reminder sent to {user_name} ({phone_number})")
-        
-    except Exception as e:
-        print(f"Error sending reminder to {phone_number}: {e}")
-
-def send_reminders_for_gameweek(twilio_client):
-    """Send reminders to all users without picks (called by scheduler)"""
-    current_gw, deadline = get_current_gameweek()
-    
-    if not current_gw:
-        print("No active gameweek for reminders")
-        return
-    
-    users_without_picks = get_users_without_picks(current_gw)
-    
-    if users_without_picks:
-        print(f"Sending reminders to {len(users_without_picks)} users for GW{current_gw}")
-        for phone in users_without_picks:
-            send_reminder(phone, current_gw, deadline, twilio_client)
-    else:
-        print(f"All users have submitted picks for GW{current_gw}")
-
-def schedule_gameweek_reminders(twilio_client):
-    """Schedule reminders for all gameweeks (4 hours before deadline)"""
-    scheduler = BackgroundScheduler(timezone=get_uk_timezone())
-    
-    for gw_num, start_date, deadline in GAMEWEEK_SCHEDULE:
-        # Schedule reminder 12 hours before deadline
-        reminder_time = deadline - timedelta(hours=12)
-        
-        # Only schedule if reminder time is in the future
-        uk_tz = get_uk_timezone()
-        now = datetime.now(uk_tz).replace(tzinfo=None)
-        uk_reminder = uk_tz.localize(reminder_time).replace(tzinfo=None)
-        
-        if uk_reminder > now:
-            trigger = DateTrigger(run_date=reminder_time, timezone=uk_tz)
-            scheduler.add_job(
-                send_reminders_for_gameweek(twilio_client),
-                trigger=trigger,
-                id=f'gw_{gw_num}_reminder',
-                name=f'Gameweek {gw_num} Reminder'
-            )
-            print(f"Scheduled reminder for GW{gw_num} at {reminder_time}")
-    
-    return scheduler
-
 
 def get_all_picks_for_gameweek(gameweek_num):
     """Get all picks submitted for a gameweek, taking latest submission per user"""
