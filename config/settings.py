@@ -42,3 +42,8 @@ SPREADSHEET_ID = os.environ.get('GOOGLE_SHEET_ID', 'your-google-sheet-id')
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
 ADMIN_PHONE = "+447375356774"
+
+# Twilio setup
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+TWILIO_FROM_NUMBER = 'whatsapp:+14155238886'

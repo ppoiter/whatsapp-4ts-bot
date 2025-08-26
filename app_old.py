@@ -1,30 +1,25 @@
+from constants import USER_MAP, ADMIN_PHONE
 from flask import Flask, request
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 import os
 
-from config.settings import ADMIN_PHONE, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, USER_MAP
-from services.sheets_service import SheetsService
-from services.message_service import MessageService
-from services.gameweek_service import GameweekService
-from services.scheduler_service import SchedulerService
-from utils.date_utils import get_current_gameweek, is_deadline_passed, format_deadline
-from utils.text_utils import parse_player_picks
+from utils import get_current_gameweek, is_deadline_passed, parse_player_picks, add_to_google_sheet, format_deadline, get_google_sheet, schedule_deadline_summaries, send_deadline_summary, process_admin_command
 
 app = Flask(__name__)
 
-# Initialize services
-twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-sheets_service = SheetsService()
-message_service = MessageService(twilio_client)
-gameweek_service = GameweekService()
-scheduler_service = SchedulerService(message_service)
+# Twilio setup
+account_sid = os.environ['TWILIO_ACCOUNT_SID']
+auth_token = os.environ['TWILIO_AUTH_TOKEN']
+twilio_client = Client(account_sid, auth_token)
+11
+user_map = USER_MAP
 
 @app.route('/send-summary/<int:gameweek>', methods=['POST'])
 def manual_summary_trigger(gameweek):
     """Manually trigger summary for testing"""
     try:
-        message_service.send_deadline_summary(gameweek)
+        send_deadline_summary(gameweek, twilio_client)
         return {'status': 'success', 'message': f'Summary sent for GW{gameweek}'}, 200
     except Exception as e:
         return {'status': 'error', 'message': str(e)}, 500
@@ -47,7 +42,7 @@ def whatsapp_webhook():
             return str(resp)
 
         if from_number == ADMIN_PHONE.lstrip('+'):
-            admin_response = gameweek_service.process_admin_command(message_body, current_gameweek)
+            admin_response = process_admin_command(message_body, current_gameweek)
             if admin_response:
                 resp = MessagingResponse()
                 resp.message(admin_response)
@@ -55,7 +50,7 @@ def whatsapp_webhook():
             
             # Existing summary command
             if message_body.lower().strip() in ['summary', 'picks', 'show picks', 'show']:
-                message_service.send_deadline_summary(current_gameweek)
+                send_deadline_summary(current_gameweek)
                 resp = MessagingResponse()
                 resp.message(f"📊 Sending Gameweek {current_gameweek} summary...")
                 return str(resp)
@@ -69,7 +64,7 @@ def whatsapp_webhook():
         if message_body.lower().strip() == 'show picks':
             # Check if this is the admin
             if from_number == ADMIN_PHONE:  # Remove + for comparison
-                message_service.send_deadline_summary(current_gameweek)
+                send_deadline_summary(current_gameweek, twilio_client)
                 resp = MessagingResponse()
                 resp.message(f"📊 Sending Gameweek {current_gameweek} summary...")
                 return str(resp)
@@ -84,11 +79,11 @@ def whatsapp_webhook():
         
         if len(players) == 4:
             # Valid picks - add to sheet
-            success, result = sheets_service.add_to_google_sheet(from_number, players, current_gameweek, deadline)
+            success, result = add_to_google_sheet(from_number, players, current_gameweek, deadline)
             
             if success:
                 deadline_str = format_deadline(deadline)
-                user_name = USER_MAP.get(from_number, from_number)
+                user_name = user_map.get(from_number, from_number)
                 response_text = (
                     f"✅ GW{current_gameweek} picks saved for {user_name}!\n"
                     f"🎯 {', '.join(players)}\n"
@@ -121,11 +116,14 @@ def whatsapp_webhook():
 def get_summary():
     """Simple GET endpoint for browser access"""
     try:
+        # Import ADMIN_PHONE if not already imported
+        from constants import ADMIN_PHONE
+        
         # Get current gameweek
         current_gw, _ = get_current_gameweek()
         
         if current_gw:
-            message_service.send_deadline_summary(current_gw)
+            send_deadline_summary(current_gw, twilio_client)
             return f"✅ Summary sent for Gameweek {current_gw} to {ADMIN_PHONE}", 200
         else:
             return "No active gameweek", 400
@@ -162,12 +160,28 @@ def gameweek_info():
     else:
         return {'status': 'no_active_gameweek'}
 
+def setup_google_sheet_headers():
+    """Set up the headers in Google Sheets (run once)"""
+    try:
+        sheet = get_google_sheet()
+        if sheet:
+            headers = ['Timestamp', 'Phone Number', 'User ID', 'Gameweek', 'Deadline', 'Player 1', 'Player 2', 'Player 3', 'Player 4']
+            
+            if not sheet.row_values(1):
+                sheet.insert_row(headers, 1)
+                print("Headers added to Google Sheet")
+            else:
+                print("Headers already exist in Google Sheet")
+        
+    except Exception as e:
+        print(f"Error setting up headers: {e}")
+
+# UPDATE your main section to include both schedulers
 if __name__ == '__main__':
-    # Setup Google Sheets headers
-    sheets_service.setup_google_sheet_headers()
+    setup_google_sheet_headers()
     
     # Start the deadline summary scheduler
-    summary_scheduler = scheduler_service.schedule_deadline_summaries()
+    summary_scheduler = schedule_deadline_summaries(twilio_client)
     summary_scheduler.start()
     print("Summary scheduler started")
     
@@ -176,4 +190,5 @@ if __name__ == '__main__':
         port = int(os.environ.get('PORT', 5000))
         app.run(host='0.0.0.0', port=port, debug=os.environ.get('DEBUG', 'False').lower() == 'true')
     except (KeyboardInterrupt, SystemExit):
+        # reminder_scheduler.shutdown()
         summary_scheduler.shutdown()
