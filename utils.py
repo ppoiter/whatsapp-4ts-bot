@@ -309,3 +309,223 @@ def schedule_deadline_summaries(twilio_client):
             print(f"Scheduled summary for GW{gw_num} at {summary_time}")
     
     return scheduler
+
+def update_player_scored_status(gameweek_num, player_name, scored):
+    """Update whether a player scored in a gameweek"""
+    try:
+        sheet = get_google_sheet()
+        if not sheet:
+            return False, "Could not connect to sheet"
+        
+        # Find or create a "Player Scores" worksheet
+        try:
+            scores_sheet = sheet.spreadsheet.worksheet("Player Scores")
+        except:
+            # Create the sheet if it doesn't exist
+            scores_sheet = sheet.spreadsheet.add_worksheet(title="Player Scores", rows=100, cols=10)
+            scores_sheet.append_row(['Gameweek', 'Player', 'Scored', 'Updated'])
+        
+        # Check if this player already has a record for this gameweek
+        all_records = scores_sheet.get_all_records()
+        row_to_update = None
+        
+        for i, record in enumerate(all_records, start=2):  # Start at 2 because row 1 is headers
+            if str(record.get('Gameweek')) == str(gameweek_num) and record.get('Player', '').lower() == player_name.lower():
+                row_to_update = i
+                break
+        
+        if row_to_update:
+            # Update existing row
+            scores_sheet.update_cell(row_to_update, 3, 'Yes' if scored else 'No')
+            scores_sheet.update_cell(row_to_update, 4, datetime.now().isoformat())
+        else:
+            # Add new row
+            scores_sheet.append_row([
+                gameweek_num,
+                player_name,
+                'Yes' if scored else 'No',
+                datetime.now().isoformat()
+            ])
+        
+        return True, f"Updated: {player_name} {'scored' if scored else 'did not score'} in GW{gameweek_num}"
+        
+    except Exception as e:
+        print(f"Error updating player status: {e}")
+        return False, str(e)
+
+def get_elimination_status(gameweek_num):
+    """Get elimination status for all users in a gameweek"""
+    try:
+        sheet = get_google_sheet()
+        if not sheet:
+            return None
+        
+        # Get all picks for the gameweek
+        picks = get_all_picks_for_gameweek(gameweek_num)
+        
+        # Try to get scoring data
+        try:
+            scores_sheet = sheet.spreadsheet.worksheet("Player Scores")
+            scores_records = scores_sheet.get_all_records()
+            
+            # Build a dict of players who scored
+            scorers = {}
+            for record in scores_records:
+                if str(record.get('Gameweek')) == str(gameweek_num):
+                    player = record.get('Player', '').lower()
+                    scored = record.get('Scored', '').lower() == 'yes'
+                    scorers[player] = scored
+        except:
+            # No scores sheet yet
+            scorers = {}
+        
+        # Check each user's status
+        results = {
+            'active': [],
+            'eliminated': [],
+            'pending': []
+        }
+        
+        for phone, data in picks.items():
+            user_name = data['user_name']
+            players = data['players']
+            
+            # Check if any of their players scored
+            has_scorer = False
+            all_checked = True
+            player_status = []
+            
+            for player in players:
+                player_lower = player.lower()
+                if player_lower in scorers:
+                    if scorers[player_lower]:
+                        has_scorer = True
+                        player_status.append(f"✅ {player}")
+                    else:
+                        player_status.append(f"❌ {player}")
+                else:
+                    all_checked = False
+                    player_status.append(f"⏳ {player}")
+            
+            status_text = f"{user_name}: {', '.join(player_status)}"
+            
+            if all_checked:
+                if has_scorer:
+                    results['active'].append(status_text)
+                else:
+                    results['eliminated'].append(status_text)
+            else:
+                results['pending'].append(status_text)
+        
+        # Add users who didn't submit
+        for phone, name in user_map.items():
+            if phone not in picks:
+                results['eliminated'].append(f"{name}: ❌ No picks submitted")
+        
+        return results
+        
+    except Exception as e:
+        print(f"Error getting elimination status: {e}")
+        return None
+
+# # Add this endpoint for testing eliminations
+# @app.route('/elimination-status/<int:gameweek>', methods=['GET'])
+# def get_elimination_status_endpoint(gameweek):
+#     """Get elimination status via HTTP"""
+#     try:
+#         results = get_elimination_status(gameweek)
+#         if results:
+#             return {
+#                 'gameweek': gameweek,
+#                 'active': results['active'],
+#                 'eliminated': results['eliminated'],
+#                 'pending': results['pending']
+#             }, 200
+#         else:
+#             return {'error': 'Could not get status'}, 500
+#     except Exception as e:
+#         return {'error': str(e)}, 500    
+
+def process_admin_command(message_body, gameweek_num):
+    """Process admin commands for scoring updates"""
+    message_lower = message_body.lower().strip()
+    
+    # Check for scoring commands
+    if message_lower.startswith('goal ') or message_lower.startswith('no goal '):
+        if message_lower.startswith('goal '):
+            # Player scored
+            player = message_lower.replace('goal ', '', 1).strip()
+            scored = True
+        else:
+            # Player didn't score
+            player = message_lower.replace('no goal ', '', 1).strip()
+            scored = False
+        
+        if player:
+            success, msg = update_player_scored_status(gameweek_num, player, scored)
+            if success:
+                return f"✅ {player}: {'GOAL! ⚽' if scored else 'No goal'}"
+            else:
+                return f"❌ Error updating {player}"
+        else:
+            return "Please specify a player name"
+    
+    # Check for active status request
+    elif message_lower in ['show active', 'active', 'whos in', 'who is in']:
+        results = get_elimination_status(gameweek_num)
+        
+        if results:
+            message = f"🎯 GAMEWEEK {gameweek_num} STATUS\n"
+            message += "=" * 25 + "\n\n"
+            
+            # Combine all users and sort by name
+            all_users = []
+            
+            # Add active users
+            for user_status in results['active']:
+                # Extract just the name and players
+                parts = user_status.split(': ', 1)
+                if len(parts) == 2:
+                    name = parts[0]
+                    # Remove the emoji indicators from players
+                    players = parts[1].replace('✅ ', '').replace('❌ ', '').replace('⏳ ', '')
+                    all_users.append((name, players, 'active'))
+            
+            # Add eliminated users
+            for user_status in results['eliminated']:
+                parts = user_status.split(': ', 1)
+                if len(parts) == 2:
+                    name = parts[0]
+                    players = parts[1].replace('✅ ', '').replace('❌ ', '').replace('⏳ ', '')
+                    if 'No picks submitted' in players:
+                        players = 'No picks submitted'
+                    all_users.append((name, players, 'eliminated'))
+            
+            # Add pending users as active for now
+            for user_status in results['pending']:
+                parts = user_status.split(': ', 1)
+                if len(parts) == 2:
+                    name = parts[0]
+                    players = parts[1].replace('✅ ', '').replace('❌ ', '').replace('⏳ ', '')
+                    all_users.append((name, players, 'pending'))
+            
+            # Sort by name
+            all_users.sort(key=lambda x: x[0])
+            
+            # Build the message
+            for name, players, status in all_users:
+                if status == 'eliminated':
+                    # Using tilde for strikethrough (WhatsApp formatting)
+                    message += f"👎 ~{name}: {players}~\n"
+                else:
+                    message += f"✅ {name}: {players}\n"
+            
+            # Add summary
+            active_count = len(results['active']) + len(results['pending'])
+            total_count = len(all_users)
+            
+            return message
+        else:
+            return "Error getting elimination status"
+    
+    return None

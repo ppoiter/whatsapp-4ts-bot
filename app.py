@@ -4,7 +4,7 @@ from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 import os
 
-from utils import get_current_gameweek, is_deadline_passed, parse_player_picks, add_to_google_sheet, format_deadline, get_google_sheet, schedule_deadline_summaries, send_deadline_summary
+from utils import get_current_gameweek, is_deadline_passed, parse_player_picks, add_to_google_sheet, format_deadline, get_google_sheet, schedule_deadline_summaries, send_deadline_summary, process_admin_command
 
 app = Flask(__name__)
 
@@ -40,6 +40,20 @@ def whatsapp_webhook():
             resp = MessagingResponse()
             resp.message("🚫 No active gameweek found. Please check back when the new season starts!")
             return str(resp)
+
+        if from_number == ADMIN_PHONE.lstrip('+'):
+            admin_response = process_admin_command(message_body, current_gameweek)
+            if admin_response:
+                resp = MessagingResponse()
+                resp.message(admin_response)
+                return str(resp)
+            
+            # Existing summary command
+            if message_body.lower().strip() in ['summary', 'picks', 'show picks', 'show']:
+                send_deadline_summary(current_gameweek)
+                resp = MessagingResponse()
+                resp.message(f"📊 Sending Gameweek {current_gameweek} summary...")
+                return str(resp)
         
         # Check if deadline has passed
         if is_deadline_passed(current_gameweek):
@@ -47,7 +61,6 @@ def whatsapp_webhook():
             resp.message(f"⏰ Sorry! The deadline for Gameweek {current_gameweek} has passed.")
             return str(resp)
 
-        # ADD THIS NEW SECTION - Check for summary request
         if message_body.lower().strip() == 'show picks':
             # Check if this is the admin
             if from_number == ADMIN_PHONE:  # Remove + for comparison
@@ -166,11 +179,6 @@ def setup_google_sheet_headers():
 # UPDATE your main section to include both schedulers
 if __name__ == '__main__':
     setup_google_sheet_headers()
-    
-    # # Start the reminder scheduler
-    # reminder_scheduler = schedule_gameweek_reminders(twilio_client)
-    # reminder_scheduler.start()
-    # print("Reminder scheduler started")
     
     # Start the deadline summary scheduler
     summary_scheduler = schedule_deadline_summaries(twilio_client)
