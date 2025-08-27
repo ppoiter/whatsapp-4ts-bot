@@ -2,20 +2,19 @@ from datetime import datetime
 import os
 
 # Premier League 2025-26 Gameweek Schedule
-# Format: (gameweek_number, start_date, deadline)
+# Format: (gameweek_number, start_date, deadline, end_time)
 # Deadline is typically Friday 6:30 PM UK time before games start
+# End time is 6 hours after the last game starts (for goal tracking window)
 GAMEWEEK_SCHEDULE = [
-    (1, datetime(2025, 8, 15), datetime(2025, 8, 15, 18, 30)),  # GW1: Deadline Friday 15th Aug 6:30pm
-    # Add more gameweeks as you get the fixture dates
-    # Example format for subsequent gameweeks:
-    (2, datetime(2025, 8, 22), datetime(2025, 8, 22, 18, 30)),
-    (3, datetime(2025, 8, 30), datetime(2025, 8, 30, 11, 00)),
-    (4, datetime(2025, 9, 13), datetime(2025, 9, 13, 11, 00)),
-    (5, datetime(2025, 9, 20), datetime(2025, 9, 20, 11, 00)),
-    (6, datetime(2025, 9, 27), datetime(2025, 9, 27, 11, 00)),
-    (7, datetime(2025, 10, 3), datetime(2025, 10, 3, 18, 30)),
-    (8, datetime(2025, 10, 18), datetime(2025, 10, 18, 11, 00)),
-    (9, datetime(2025, 10, 24), datetime(2025, 10, 24, 20, 00)),
+    (1, datetime(2025, 8, 15), datetime(2025, 8, 15, 18, 30), datetime(2025, 8, 17, 23, 00)),
+    (2, datetime(2025, 8, 22), datetime(2025, 8, 22, 18, 30), datetime(2025, 8, 25, 23, 00)),
+    (3, datetime(2025, 8, 30), datetime(2025, 8, 30, 11, 00), datetime(2025, 8, 31, 7, 00)), 
+    (4, datetime(2025, 9, 13), datetime(2025, 9, 13, 11, 00), datetime(2025, 9, 14, 16, 30)),
+    (5, datetime(2025, 9, 20), datetime(2025, 9, 20, 11, 00), datetime(2025, 9, 21, 16, 30)),
+    (6, datetime(2025, 9, 27), datetime(2025, 9, 27, 11, 00), datetime(2025, 9, 29, 20, 00)),
+    (7, datetime(2025, 10, 3), datetime(2025, 10, 3, 18, 30), datetime(2025, 10, 5, 16, 30)),
+    (8, datetime(2025, 10, 18), datetime(2025, 10, 18, 11, 00), datetime(2025, 10, 20, 20, 00)),
+    (9, datetime(2025, 10, 24), datetime(2025, 10, 24, 18, 30), datetime(2025, 10, 26, 16, 30)),
 ]
 
 # User mapping
