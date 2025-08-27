@@ -46,6 +46,7 @@ def whatsapp_webhook():
             resp.message("🚫 No active gameweek found. Please check back when the new season starts!")
             return str(resp)
 
+        # Check for admin commands first (for admin user)
         if from_number == ADMIN_PHONE.lstrip('+'):
             admin_response = gameweek_service.process_admin_command(message_body, current_gameweek)
             if admin_response:
@@ -59,6 +60,17 @@ def whatsapp_webhook():
                 resp = MessagingResponse()
                 resp.message(f"📊 Sending Gameweek {current_gameweek} summary...")
                 return str(resp)
+        
+        # Handle specific commands for all users before trying to parse as picks
+        message_lower = message_body.lower().strip()
+        if message_lower in ['show active', 'active', 'whos in', 'who is in']:
+            resp = MessagingResponse()
+            if from_number == ADMIN_PHONE.lstrip('+'):
+                admin_response = gameweek_service.process_admin_command(message_body, current_gameweek)
+                resp.message(admin_response if admin_response else "Error processing command")
+            else:
+                resp.message("⛔ Only the admin can request active player status.")
+            return str(resp)
         
         # Check if deadline has passed
         if is_deadline_passed(current_gameweek):
