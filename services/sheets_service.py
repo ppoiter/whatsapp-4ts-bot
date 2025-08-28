@@ -204,13 +204,21 @@ class SheetsService:
                 scores_sheet = sheet.spreadsheet.worksheet("Player Scores")
                 scores_records = scores_sheet.get_all_records()
                 
+                print(f"DEBUG: Found {len(scores_records)} records in Player Scores sheet")
+                print(f"DEBUG: Looking for gameweek {gameweek_num}")
+                
                 # Build a dict of players who scored
                 scorers = {}
                 for record in scores_records:
-                    if str(record.get('Gameweek')) == str(gameweek_num):
-                        player = record.get('Player', '').lower()
-                        scored = record.get('Scored', '').lower() == 'yes'
+                    record_gw = str(record.get('Gameweek'))
+                    if record_gw == str(gameweek_num):
+                        player = record.get('Player', '').strip().lower()
+                        scored_value = record.get('Scored', '').strip().lower()
+                        scored = scored_value == 'yes'
                         scorers[player] = scored
+                        print(f"DEBUG: Player '{player}' -> scored: {scored} (raw value: '{scored_value}')")
+                
+                print(f"DEBUG: Final scorers dict: {scorers}")
             except:
                 # No scores sheet yet
                 scorers = {}
@@ -232,16 +240,20 @@ class SheetsService:
                 player_status = []
                 
                 for player in players:
-                    player_lower = player.lower()
+                    player_lower = player.strip().lower()
+                    print(f"DEBUG: Checking player '{player_lower}' for {user_name}")
                     if player_lower in scorers:
                         if scorers[player_lower]:
                             has_scorer = True
                             player_status.append(f"✅ {player}")
+                            print(f"DEBUG: Player '{player_lower}' scored!")
                         else:
                             player_status.append(f"❌ {player}")
+                            print(f"DEBUG: Player '{player_lower}' did not score")
                     else:
                         all_checked = False
                         player_status.append(f"⏳ {player}")
+                        print(f"DEBUG: Player '{player_lower}' not found in scorers dict")
                 
                 status_text = f"{user_name}: {', '.join(player_status)}"
                 
