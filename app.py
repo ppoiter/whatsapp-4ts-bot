@@ -47,7 +47,7 @@ def whatsapp_webhook():
             return str(resp)
 
         # Check for admin commands first (for admin user)
-        if from_number == ADMIN_PHONE.lstrip('+'):
+        if from_number == ADMIN_PHONE:
             admin_response = gameweek_service.process_admin_command(message_body, current_gameweek)
             if admin_response:
                 resp = MessagingResponse()
@@ -65,7 +65,7 @@ def whatsapp_webhook():
         message_lower = message_body.lower().strip()
         if message_lower in ['show active', 'active', 'whos in', 'who is in']:
             resp = MessagingResponse()
-            if from_number == ADMIN_PHONE.lstrip('+'):
+            if from_number == ADMIN_PHONE:
                 admin_response = gameweek_service.process_admin_command(message_body, current_gameweek)
                 resp.message(admin_response if admin_response else "Error processing command")
             else:
