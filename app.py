@@ -80,7 +80,7 @@ def whatsapp_webhook():
 
         if message_body.lower().strip() == 'show picks':
             # Check if this is the admin
-            if from_number == ADMIN_PHONE.lstrip('+'):  # Remove + for comparison
+            if from_number == ADMIN_PHONE:  # Remove + for comparison
                 message_service.send_deadline_summary(current_gameweek)
                 resp = MessagingResponse()
                 resp.message(f"📊 Sending Gameweek {current_gameweek} summary...")
