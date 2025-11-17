@@ -17,12 +17,14 @@ GAMEWEEK_SCHEDULE = [
     (9, datetime(2025, 10, 24), datetime(2025, 10, 24, 18, 30), datetime(2025, 10, 26, 16, 30)),
     (10, datetime(2025, 11, 1), datetime(2025, 11, 1, 13, 30), datetime(2025, 11, 4, 2, 30)),
     (11, datetime(2025, 11, 8), datetime(2025, 11, 8, 11, 0), datetime(2025, 11, 10, 0, 30)),
-    (11, datetime(2025, 11, 22), datetime(2025, 11, 22, 11, 0), datetime(2025, 11, 25, 2, 30)),
-    (12, datetime(2025, 11, 29), datetime(2025, 11, 29, 13, 30), datetime(2025, 12, 1, 2, 30)),
-    (13, datetime(2025, 12, 2), datetime(2025, 12, 2, 18, 00), datetime(2025, 12, 5, 2, 00)),
-    (14, datetime(2025, 12, 6), datetime(2025, 12, 6, 10, 30), datetime(2025, 12, 9, 2, 30)),
-    (15, datetime(2025, 12, 13), datetime(2025, 12, 13, 13, 30), datetime(2025, 12, 14, 22, 30)),
-    (16, datetime(2025, 12, 20), datetime(2025, 12, 20, 11, 00), datetime(2025, 12, 23, 2, 30)),
+    (12, datetime(2025, 11, 22), datetime(2025, 11, 22, 11, 0), datetime(2025, 11, 25, 2, 30)),
+    (13, datetime(2025, 11, 29), datetime(2025, 11, 29, 13, 30), datetime(2025, 12, 1, 2, 30)),
+    (14, datetime(2025, 12, 2), datetime(2025, 12, 2, 18, 00), datetime(2025, 12, 5, 2, 00)),
+    (15, datetime(2025, 12, 6), datetime(2025, 12, 6, 10, 30), datetime(2025, 12, 9, 2, 30)),
+    (16, datetime(2025, 12, 13), datetime(2025, 12, 13, 13, 30), datetime(2025, 12, 14, 22, 30)),
+    (17, datetime(2025, 12, 20), datetime(2025, 12, 20, 11, 00), datetime(2025, 12, 23, 2, 30)),
+    (18, datetime(2025, 12, 26), datetime(2025, 12, 26, 18, 30), datetime(2025, 12, 28, 22, 30)),
+    (19, datetime(2025, 12, 30), datetime(2025, 12, 30, 18, 00), datetime(2026, 1, 2, 2, 30)),
 ]
 
 # User mapping
