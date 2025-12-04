@@ -19,12 +19,16 @@ GAMEWEEK_SCHEDULE = [
     (11, datetime(2025, 11, 8), datetime(2025, 11, 8, 11, 0), datetime(2025, 11, 10, 0, 30)),
     (12, datetime(2025, 11, 22), datetime(2025, 11, 22, 11, 0), datetime(2025, 11, 25, 2, 30)),
     (13, datetime(2025, 11, 29), datetime(2025, 11, 29, 13, 30), datetime(2025, 12, 1, 2, 30)),
-    (14, datetime(2025, 12, 2), datetime(2025, 12, 2, 18, 00), datetime(2025, 12, 5, 2, 00)),
+    (14, datetime(2025, 12, 2), datetime(2025, 12, 2, 18, 00), datetime(2025, 12, 4, 20, 00)),
     (15, datetime(2025, 12, 6), datetime(2025, 12, 6, 10, 30), datetime(2025, 12, 9, 2, 30)),
     (16, datetime(2025, 12, 13), datetime(2025, 12, 13, 13, 30), datetime(2025, 12, 14, 22, 30)),
-    (17, datetime(2025, 12, 20), datetime(2025, 12, 20, 11, 00), datetime(2025, 12, 23, 2, 30)),
-    (18, datetime(2025, 12, 26), datetime(2025, 12, 26, 18, 30), datetime(2025, 12, 28, 22, 30)),
+    (17, datetime(2025, 12, 20), datetime(2025, 12, 20, 11, 00), datetime(2025, 12, 22, 20, 30)),
+    (18, datetime(2025, 12, 26), datetime(2025, 12, 26, 18, 30), datetime(2025, 12, 28, 16, 30)),
     (19, datetime(2025, 12, 30), datetime(2025, 12, 30, 18, 00), datetime(2026, 1, 2, 2, 30)),
+    (20, datetime(2026, 1, 3), datetime(2026, 1, 3, 11, 0), datetime(2026, 1, 4, 17, 30)),
+    (21, datetime(2026, 1, 6), datetime(2026, 1, 6, 18, 30), datetime(2026, 1, 8, 20, 00)),
+    (22, datetime(2026, 1, 17), datetime(2026, 1, 17, 11, 00), datetime(2026, 1, 19, 20, 00)),
+    (23, datetime(2026, 1, 24), datetime(2026, 1, 24, 11, 00), datetime(2026, 1, 26, 20, 00)),
 ]
 
 # User mapping
@@ -43,7 +47,8 @@ USER_MAP = {
     "+447517587086": "Joss",
     "+447375356774": "Peter",
     "+447526186549": "Rohan",
-    "+447438895095": "Sam"
+    "+447438895095": "Sam",
+    "+33699389571" : "Mike",
 }
 
 # Google Sheets setup
