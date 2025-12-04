@@ -20,7 +20,7 @@ GAMEWEEK_SCHEDULE = [
     (12, datetime(2025, 11, 22), datetime(2025, 11, 22, 11, 0), datetime(2025, 11, 25, 2, 30)),
     (13, datetime(2025, 11, 29), datetime(2025, 11, 29, 13, 30), datetime(2025, 12, 1, 2, 30)),
     (14, datetime(2025, 12, 2), datetime(2025, 12, 2, 18, 00), datetime(2025, 12, 4, 20, 00)),
-    (15, datetime(2025, 12, 6), datetime(2025, 12, 6, 10, 30), datetime(2025, 12, 9, 2, 30)),
+    (15, datetime(2025, 12, 6), datetime(2025, 12, 6, 11, 00), datetime(2025, 12, 9, 2, 30)),
     (16, datetime(2025, 12, 13), datetime(2025, 12, 13, 13, 30), datetime(2025, 12, 14, 22, 30)),
     (17, datetime(2025, 12, 20), datetime(2025, 12, 20, 11, 00), datetime(2025, 12, 22, 20, 30)),
     (18, datetime(2025, 12, 26), datetime(2025, 12, 26, 18, 30), datetime(2025, 12, 28, 16, 30)),
