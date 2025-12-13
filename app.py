@@ -8,6 +8,7 @@ from services.sheets_service import SheetsService
 from services.message_service import MessageService
 from services.gameweek_service import GameweekService
 from services.scheduler_service import SchedulerService
+from services.fixture_service import FixtureService
 from utils.date_utils import get_current_gameweek, is_deadline_passed, format_deadline
 from utils.text_utils import parse_player_picks
 
@@ -19,6 +20,7 @@ sheets_service = SheetsService()
 message_service = MessageService(twilio_client)
 gameweek_service = GameweekService()
 scheduler_service = SchedulerService(message_service)
+fixture_service = FixtureService()
 
 @app.route('/send-summary/<int:gameweek>', methods=['POST'])
 def manual_summary_trigger(gameweek):
@@ -59,6 +61,13 @@ def whatsapp_webhook():
                 message_service.send_deadline_summary(current_gameweek)
                 resp = MessagingResponse()
                 resp.message(f"📊 Sending Gameweek {current_gameweek} summary...")
+                return str(resp)
+            
+            # Show fixtures command
+            if message_body.lower().strip() in ['show fixtures', 'fixtures', 'games']:
+                fixtures_message = fixture_service.format_fixtures_message(current_gameweek)
+                resp = MessagingResponse()
+                resp.message(fixtures_message)
                 return str(resp)
         
         # Handle specific commands for all users before trying to parse as picks
@@ -177,6 +186,9 @@ def gameweek_info():
 if __name__ == '__main__':
     # Setup Google Sheets headers
     sheets_service.setup_google_sheet_headers()
+    
+    # Setup Fixtures sheet
+    fixture_service.setup_fixtures_sheet()
     
     # Start the deadline summary scheduler
     summary_scheduler = scheduler_service.schedule_deadline_summaries()
