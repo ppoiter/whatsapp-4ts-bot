@@ -46,10 +46,9 @@ class FixtureService:
         fixtures = self.get_fixtures_for_gameweek(gameweek_num)
         
         if not fixtures:
-            return f"📅 No fixtures found for Gameweek {gameweek_num}"
+            return f"No fixtures found for Gameweek {gameweek_num}"
         
-        message = f"📅 GAMEWEEK {gameweek_num} FIXTURES\n"
-        message += "=" * 25 + "\n\n"
+        message = ""
         
         current_date = ""
         for fixture in fixtures:
@@ -61,23 +60,16 @@ class FixtureService:
                 try:
                     date_obj = datetime.strptime(fixture_date, '%Y-%m-%d')
                     formatted_date = date_obj.strftime('%A, %d %B')
-                    message += f"🗓️ {formatted_date}\n"
+                    message += f"{formatted_date}\n"
                 except:
-                    message += f"🗓️ {fixture_date}\n"
+                    message += f"{fixture_date}\n"
             
             # Add fixture
             time = fixture['time']
             home = fixture['home_team']
             away = fixture['away_team']
-            status = fixture['status']
             
-            status_emoji = {
-                'Scheduled': '⏰',
-                'Live': '🔴',
-                'Completed': '✅'
-            }.get(status, '⏰')
-            
-            message += f"{status_emoji} {time} - {home} vs {away}\n"
+            message += f"{time} - {home} vs {away}\n"
         
         return message
     
