@@ -10,26 +10,86 @@ class GameweekService:
     def process_admin_command(self, message_body, gameweek_num):
         """Process admin commands for scoring updates"""
         message_lower = message_body.lower().strip()
+        message_original = message_body.strip()
         
         # Check for scoring commands
         if message_lower.startswith('goal ') or message_lower.startswith('no goal '):
             if message_lower.startswith('goal '):
-                # Player scored
-                player = message_lower.replace('goal ', '', 1).strip()
+                # Player scored - preserve original case
+                player = message_original[5:].strip()  # Skip "goal "
                 scored = True
             else:
-                # Player didn't score
-                player = message_lower.replace('no goal ', '', 1).strip()
+                # Player didn't score - preserve original case
+                player = message_original[8:].strip()  # Skip "no goal "
                 scored = False
             
             if player:
                 success, msg = self.sheets_service.update_player_scored_status(gameweek_num, player, scored)
                 if success:
-                    return f"✅ {player}: {'GOAL! ⚽' if scored else 'No goal'}"
+                    # Use title case for display
+                    player_display = player.title()
+                    return f"✅ {player_display}: {'GOAL! ⚽' if scored else 'No goal'}"
                 else:
                     return f"❌ Error updating {player}"
             else:
                 return "Please specify a player name"
+        
+        # Help command for admin
+        elif message_lower in ['help', 'commands']:
+            return ("📋 ADMIN COMMANDS:\n"
+                    "• goal [player name] - Mark player as scored\n"
+                    "• no goal [player name] - Mark player as didn't score\n" 
+                    "• show active - Show elimination status\n"
+                    "• show scorers - List all players who scored\n"
+                    "• summary/picks - Show all picks\n"
+                    "• fixtures - Show fixtures\n\n"
+                    "Example: goal Mohamed Salah")
+        
+        # Show all scorers for the gameweek
+        elif message_lower in ['show scorers', 'scorers', 'goals']:
+            try:
+                sheet = self.sheets_service.get_google_sheet()
+                if not sheet:
+                    return "❌ Could not connect to sheet"
+                
+                try:
+                    scores_sheet = sheet.spreadsheet.worksheet("Player Scores")
+                    scores_records = scores_sheet.get_all_records()
+                    
+                    scorers = []
+                    non_scorers = []
+                    
+                    for record in scores_records:
+                        if str(record.get('Gameweek')) == str(gameweek_num):
+                            player = record.get('Player', '').strip()
+                            scored = record.get('Scored', '').strip().lower() == 'yes'
+                            if scored:
+                                scorers.append(player)
+                            else:
+                                non_scorers.append(player)
+                    
+                    message = f"⚽ GAMEWEEK {gameweek_num} SCORERS\n"
+                    message += "=" * 25 + "\n\n"
+                    
+                    if scorers:
+                        message += "✅ SCORED:\n"
+                        for player in sorted(scorers):
+                            message += f"  • {player}\n"
+                    else:
+                        message += "No scorers recorded yet\n"
+                    
+                    if non_scorers:
+                        message += "\n❌ DID NOT SCORE:\n"
+                        for player in sorted(non_scorers):
+                            message += f"  • {player}\n"
+                    
+                    return message
+                    
+                except:
+                    return "No scoring data recorded yet. Use 'goal [player]' to add."
+                    
+            except Exception as e:
+                return f"❌ Error getting scorers: {str(e)}"
         
         # Check for active status request
         elif message_lower in ['show active', 'active', 'whos in', 'who is in']:
