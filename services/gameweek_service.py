@@ -39,7 +39,7 @@ class GameweekService:
             return ("📋 ADMIN COMMANDS:\n"
                     "• goal [player name] - Mark player as scored\n"
                     "• no goal [player name] - Mark player as didn't score\n" 
-                    "• show active - Show elimination status\n"
+                    "• show active - Show win/lose status\n"
                     "• show scorers - List all players who scored\n"
                     "• summary/picks - Show all picks\n"
                     "• fixtures - Show fixtures\n\n"
@@ -91,8 +91,8 @@ class GameweekService:
             except Exception as e:
                 return f"❌ Error getting scorers: {str(e)}"
         
-        # Check for active status request
-        elif message_lower in ['show active', 'active', 'whos in', 'who is in']:
+        # Check for status request
+        elif message_lower in ['show active', 'active', 'whos in', 'who is in', 'status', 'show status']:
             results = self.sheets_service.get_elimination_status(gameweek_num)
             
             if results:
@@ -102,25 +102,25 @@ class GameweekService:
                 # Combine all users and sort by name
                 all_users = []
                 
-                # Add active users
-                for user_status in results['active']:
+                # Add winners
+                for user_status in results.get('won', []):
                     # Extract just the name and players
                     parts = user_status.split(': ', 1)
                     if len(parts) == 2:
                         name = parts[0]
                         # Remove the emoji indicators from players
                         players = parts[1].replace('✅ ', '').replace('❌ ', '').replace('⏳ ', '')
-                        all_users.append((name, players, 'active'))
+                        all_users.append((name, players, 'won'))
                 
-                # Add eliminated users
-                for user_status in results['eliminated']:
+                # Add losers
+                for user_status in results.get('lost', []):
                     parts = user_status.split(': ', 1)
                     if len(parts) == 2:
                         name = parts[0]
                         players = parts[1].replace('✅ ', '').replace('❌ ', '').replace('⏳ ', '')
                         if 'No picks submitted' in players:
                             players = 'No picks submitted'
-                        all_users.append((name, players, 'eliminated'))
+                        all_users.append((name, players, 'lost'))
                 
                 # Add pending users as active for now
                 for user_status in results['pending']:
@@ -135,9 +135,13 @@ class GameweekService:
                 
                 # Build the message
                 for name, players, status in all_users:
-                    if status == 'eliminated':
+                    if status == 'lost':
                         # Using tilde for strikethrough (WhatsApp formatting)
                         message += f"👎 ~{name}: {players}~\n"
+                    elif status == 'won':
+                        message += f"🏆 {name}: {players}\n"
+                    elif status == 'pending':
+                        message += f"⏳ {name}: {players}\n"
                     else:
                         message += f"✅ {name}: {players}\n"
                 

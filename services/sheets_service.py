@@ -194,7 +194,7 @@ class SheetsService:
             return False, str(e)
 
     def get_elimination_status(self, gameweek_num):
-        """Get elimination status for all users in a gameweek"""
+        """Get win/lose status for all users in a gameweek (Four to Score rules)"""
         try:
             sheet = self.get_google_sheet()
             if not sheet:
@@ -229,17 +229,17 @@ class SheetsService:
             
             # Check each user's status
             results = {
-                'active': [],
-                'eliminated': [],
-                'pending': []
+                'won': [],  # All 4 players scored
+                'lost': [],  # At least one player didn't score
+                'pending': []  # Not all players checked yet
             }
             
             for phone, data in picks.items():
                 user_name = data['user_name']
                 players = data['players']
                 
-                # Check if any of their players scored
-                has_scorer = False
+                # Check if ALL players scored (need all 4 to win)
+                all_scored = True
                 all_checked = True
                 player_status = []
                 
@@ -248,31 +248,32 @@ class SheetsService:
                     print(f"DEBUG: Checking player '{player_normalized}' for {user_name}")
                     if player_normalized in scorers:
                         if scorers[player_normalized]:
-                            has_scorer = True
                             player_status.append(f"✅ {player}")
                             print(f"DEBUG: Player '{player_normalized}' scored!")
                         else:
+                            all_scored = False
                             player_status.append(f"❌ {player}")
                             print(f"DEBUG: Player '{player_normalized}' did not score")
                     else:
                         all_checked = False
+                        all_scored = False  # Can't have won if not all checked
                         player_status.append(f"⏳ {player}")
                         print(f"DEBUG: Player '{player_normalized}' not found in scorers dict")
                 
                 status_text = f"{user_name}: {', '.join(player_status)}"
                 
                 if all_checked:
-                    if has_scorer:
-                        results['active'].append(status_text)
+                    if all_scored:
+                        results['won'].append(status_text)
                     else:
-                        results['eliminated'].append(status_text)
+                        results['lost'].append(status_text)
                 else:
                     results['pending'].append(status_text)
             
             # Add users who didn't submit
             for phone, name in self.user_map.items():
                 if phone not in picks:
-                    results['eliminated'].append(f"{name}: ❌ No picks submitted")
+                    results['lost'].append(f"{name}: ❌ No picks submitted")
             
             return results
             
