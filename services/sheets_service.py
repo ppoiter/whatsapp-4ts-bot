@@ -468,9 +468,10 @@ class SheetsService:
             # Normalize user identifier for matching
             user_lower = user_identifier.strip().lower()
             
-            # Find user in sheet
+            # Find ALL entries for this user in this gameweek
             all_records = status_sheet.get_all_records()
-            found = False
+            rows_updated = []
+            user_name_found = None
             
             for i, record in enumerate(all_records, start=2):
                 if str(record.get('Gameweek')) == str(gameweek_num):
@@ -482,20 +483,65 @@ class SheetsService:
                     phone_match = phone_in_sheet == user_identifier
                     
                     if name_match or phone_match:
-                        # Update status to Lost
+                        # Update status to Lost for ALL matching entries
                         status_sheet.update_cell(i, 13, 'Lost')  # Status column
                         status_sheet.update_cell(i, 14, datetime.now().isoformat())  # Updated column
-                        found = True
-                        user_name = record.get('User Name', user_identifier)
-                        break
+                        rows_updated.append(i)
+                        user_name_found = user_name_in_sheet
             
-            if found:
-                return True, f"Eliminated {user_name} for GW{gameweek_num}"
+            if rows_updated:
+                return True, f"Eliminated {user_name_found} for GW{gameweek_num} ({len(rows_updated)} entries updated)"
             else:
                 return False, f"User '{user_identifier}' not found in GW{gameweek_num}"
                 
         except Exception as e:
             print(f"Error eliminating user: {e}")
+            return False, str(e)
+    
+    def reinstate_user(self, user_identifier, gameweek_num):
+        """Manually set a user's status back to Pending"""
+        try:
+            sheet = self.get_google_sheet()
+            if not sheet:
+                return False, "Could not connect to sheet"
+            
+            # Get User Status worksheet
+            try:
+                status_sheet = sheet.spreadsheet.worksheet("User Status")
+            except:
+                return False, "User Status sheet not found"
+            
+            # Normalize user identifier for matching
+            user_lower = user_identifier.strip().lower()
+            
+            # Find ALL entries for this user in this gameweek
+            all_records = status_sheet.get_all_records()
+            rows_updated = []
+            user_name_found = None
+            
+            for i, record in enumerate(all_records, start=2):
+                if str(record.get('Gameweek')) == str(gameweek_num):
+                    # Check if identifier matches phone or name
+                    user_name_in_sheet = str(record.get('User Name', '')).strip()
+                    phone_in_sheet = str(record.get('Phone Number', '')).strip()
+                    
+                    name_match = user_name_in_sheet.lower() == user_lower
+                    phone_match = phone_in_sheet == user_identifier
+                    
+                    if name_match or phone_match:
+                        # Update status to Pending for ALL matching entries
+                        status_sheet.update_cell(i, 13, 'Pending')  # Status column
+                        status_sheet.update_cell(i, 14, datetime.now().isoformat())  # Updated column
+                        rows_updated.append(i)
+                        user_name_found = user_name_in_sheet
+            
+            if rows_updated:
+                return True, f"Reinstated {user_name_found} for GW{gameweek_num} ({len(rows_updated)} entries updated)"
+            else:
+                return False, f"User '{user_identifier}' not found in GW{gameweek_num}"
+                
+        except Exception as e:
+            print(f"Error reinstating user: {e}")
             return False, str(e)
     
     def get_user_status_from_sheet(self, gameweek_num):

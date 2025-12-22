@@ -46,12 +46,25 @@ class GameweekService:
             else:
                 return "Please specify a user name (e.g., 'eliminate Aubrey')"
         
+        # Reinstate command
+        elif message_lower.startswith('reinstate '):
+            user_name = message_original[10:].strip()  # Skip "reinstate "
+            if user_name:
+                success, msg = self.sheets_service.reinstate_user(user_name, gameweek_num)
+                if success:
+                    return f"✅ {msg}"
+                else:
+                    return f"⚠️ {msg}"
+            else:
+                return "Please specify a user name (e.g., 'reinstate Peter')"
+        
         # Help command for admin
         elif message_lower in ['help', 'commands']:
             return ("📋 ADMIN COMMANDS:\n"
                     "• goal [player name] - Mark player as scored\n"
                     "• no goal [player name] - Mark player as didn't score\n" 
                     "• eliminate [user] - Manually eliminate user\n"
+                    "• reinstate [user] - Reinstate eliminated user\n"
                     "• show active - Show win/lose status\n"
                     "• show scorers - List all players who scored\n"
                     "• summary/picks - Show all picks\n"
