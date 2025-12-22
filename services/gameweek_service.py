@@ -34,11 +34,24 @@ class GameweekService:
             else:
                 return "Please specify a player name"
         
+        # Eliminate command
+        elif message_lower.startswith('eliminate '):
+            user_name = message_original[10:].strip()  # Skip "eliminate "
+            if user_name:
+                success, msg = self.sheets_service.eliminate_user(user_name, gameweek_num)
+                if success:
+                    return f"❌ {msg}"
+                else:
+                    return f"⚠️ {msg}"
+            else:
+                return "Please specify a user name (e.g., 'eliminate Aubrey')"
+        
         # Help command for admin
         elif message_lower in ['help', 'commands']:
             return ("📋 ADMIN COMMANDS:\n"
                     "• goal [player name] - Mark player as scored\n"
                     "• no goal [player name] - Mark player as didn't score\n" 
+                    "• eliminate [user] - Manually eliminate user\n"
                     "• show active - Show win/lose status\n"
                     "• show scorers - List all players who scored\n"
                     "• summary/picks - Show all picks\n"
@@ -93,7 +106,7 @@ class GameweekService:
         
         # Check for status request
         elif message_lower in ['show active', 'active', 'whos in', 'who is in', 'status', 'show status']:
-            results = self.sheets_service.get_elimination_status(gameweek_num)
+            results = self.sheets_service.get_user_status_from_sheet(gameweek_num)
             
             if results:
                 message = f"🎯 GAMEWEEK {gameweek_num} STATUS\n"

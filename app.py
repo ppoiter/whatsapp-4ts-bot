@@ -187,6 +187,9 @@ if __name__ == '__main__':
     # Setup Google Sheets headers
     sheets_service.setup_google_sheet_headers()
     
+    # Setup User Status sheet
+    sheets_service.setup_user_status_sheet()
+    
     # Setup Fixtures sheet
     fixture_service.setup_fixtures_sheet()
     

@@ -69,6 +69,10 @@ class SheetsService:
             
             sheet.append_row(row_data)
             print(f"Added GW{gameweek_num} picks for {user_id}: {', '.join(players)}")
+            
+            # Also update User Status sheet
+            self.update_user_status_picks(phone_number, players, gameweek_num)
+            
             return True, "success"
             
         except Exception as e:
@@ -187,6 +191,9 @@ class SheetsService:
                     datetime.now().isoformat()
                 ])
             
+            # Also update User Status sheet
+            self.update_player_scores_in_status(normalized_player, scored, gameweek_num)
+            
             return True, f"Updated: {normalized_player} {'scored' if scored else 'did not score'} in GW{gameweek_num}"
             
         except Exception as e:
@@ -280,3 +287,275 @@ class SheetsService:
         except Exception as e:
             print(f"Error getting elimination status: {e}")
             return None
+    
+    def setup_user_status_sheet(self):
+        """Set up the User Status sheet with headers (run once)"""
+        try:
+            sheet = self.get_google_sheet()
+            if not sheet:
+                return False, "Could not connect to Google Sheets"
+            
+            # Create User Status worksheet if it doesn't exist
+            try:
+                status_sheet = sheet.spreadsheet.worksheet("User Status")
+                print("User Status sheet already exists")
+                return True, "User Status sheet already exists"
+            except:
+                # Create the sheet
+                status_sheet = sheet.spreadsheet.add_worksheet(title="User Status", rows=500, cols=15)
+                headers = [
+                    'Timestamp', 'Gameweek', 'Phone Number', 'User Name',
+                    'Player 1', 'P1 Scored', 'Player 2', 'P2 Scored',
+                    'Player 3', 'P3 Scored', 'Player 4', 'P4 Scored',
+                    'Status', 'Updated'
+                ]
+                status_sheet.insert_row(headers, 1)
+                print("Created User Status sheet with headers")
+                return True, "Created User Status sheet with headers"
+                
+        except Exception as e:
+            print(f"Error setting up User Status sheet: {e}")
+            return False, str(e)
+    
+    def update_user_status_picks(self, phone_number, players, gameweek_num):
+        """Add or update user picks in User Status sheet"""
+        try:
+            sheet = self.get_google_sheet()
+            if not sheet:
+                return False, "Could not connect to sheet"
+            
+            # Get or create User Status worksheet
+            try:
+                status_sheet = sheet.spreadsheet.worksheet("User Status")
+            except:
+                # Create sheet if it doesn't exist
+                self.setup_user_status_sheet()
+                status_sheet = sheet.spreadsheet.worksheet("User Status")
+            
+            user_name = self.user_map.get(phone_number, phone_number)
+            
+            # Check if user already has entry for this gameweek
+            all_records = status_sheet.get_all_records()
+            row_to_update = None
+            
+            for i, record in enumerate(all_records, start=2):  # Start at 2 because row 1 is headers
+                if str(record.get('Gameweek')) == str(gameweek_num) and record.get('Phone Number') == phone_number:
+                    row_to_update = i
+                    break
+            
+            if row_to_update:
+                # Update existing row
+                status_sheet.update(f'A{row_to_update}:N{row_to_update}', [[
+                    datetime.now().isoformat(),
+                    gameweek_num,
+                    phone_number,
+                    user_name,
+                    players[0], '', players[1], '', 
+                    players[2], '', players[3], '',
+                    'Pending',
+                    datetime.now().isoformat()
+                ]])
+            else:
+                # Add new row
+                status_sheet.append_row([
+                    datetime.now().isoformat(),
+                    gameweek_num,
+                    phone_number,
+                    user_name,
+                    players[0], '', players[1], '', 
+                    players[2], '', players[3], '',
+                    'Pending',
+                    datetime.now().isoformat()
+                ])
+            
+            return True, f"Updated User Status for {user_name}"
+            
+        except Exception as e:
+            print(f"Error updating user status picks: {e}")
+            return False, str(e)
+    
+    def update_player_scores_in_status(self, player_name, scored, gameweek_num):
+        """Update User Status sheet when a player's score is marked"""
+        try:
+            sheet = self.get_google_sheet()
+            if not sheet:
+                return False, "Could not connect to sheet"
+            
+            # Get User Status worksheet
+            try:
+                status_sheet = sheet.spreadsheet.worksheet("User Status")
+            except:
+                return False, "User Status sheet not found"
+            
+            # Normalize player name
+            normalized_player = player_name.strip().title()
+            
+            # Get all records for this gameweek
+            all_records = status_sheet.get_all_records()
+            updates_made = 0
+            
+            for i, record in enumerate(all_records, start=2):
+                if str(record.get('Gameweek')) == str(gameweek_num):
+                    # Check each player column
+                    row_updated = False
+                    player_columns = [
+                        ('Player 1', 'P1 Scored', 5, 6),
+                        ('Player 2', 'P2 Scored', 7, 8),
+                        ('Player 3', 'P3 Scored', 9, 10),
+                        ('Player 4', 'P4 Scored', 11, 12)
+                    ]
+                    
+                    for player_col, score_col, player_idx, score_idx in player_columns:
+                        player_in_sheet = str(record.get(player_col, '')).strip().title()
+                        if player_in_sheet == normalized_player:
+                            # Update the scored column
+                            status_sheet.update_cell(i, score_idx, 'Yes' if scored else 'No')
+                            row_updated = True
+                    
+                    if row_updated:
+                        # Recalculate status for this user
+                        all_scored = True
+                        any_failed = False
+                        all_checked = True
+                        
+                        # Re-fetch the row to get updated values
+                        row_values = status_sheet.row_values(i)
+                        for score_idx in [6, 8, 10, 12]:  # P1, P2, P3, P4 Scored columns
+                            if score_idx <= len(row_values):
+                                score_val = row_values[score_idx - 1].strip().lower() if score_idx - 1 < len(row_values) else ''
+                                if score_val == 'no':
+                                    all_scored = False
+                                    any_failed = True
+                                elif score_val != 'yes':
+                                    all_scored = False
+                                    all_checked = False
+                        
+                        # Update status
+                        if any_failed:
+                            new_status = 'Lost'
+                        elif all_scored and all_checked:
+                            new_status = 'Won'
+                        else:
+                            new_status = 'Pending'
+                        
+                        status_sheet.update_cell(i, 13, new_status)  # Status column
+                        status_sheet.update_cell(i, 14, datetime.now().isoformat())  # Updated column
+                        updates_made += 1
+            
+            return True, f"Updated {updates_made} user statuses for {normalized_player}"
+            
+        except Exception as e:
+            print(f"Error updating player scores in status: {e}")
+            return False, str(e)
+    
+    def eliminate_user(self, user_identifier, gameweek_num):
+        """Manually set a user's status to Lost"""
+        try:
+            sheet = self.get_google_sheet()
+            if not sheet:
+                return False, "Could not connect to sheet"
+            
+            # Get User Status worksheet
+            try:
+                status_sheet = sheet.spreadsheet.worksheet("User Status")
+            except:
+                return False, "User Status sheet not found"
+            
+            # Normalize user identifier for matching
+            user_lower = user_identifier.strip().lower()
+            
+            # Find user in sheet
+            all_records = status_sheet.get_all_records()
+            found = False
+            
+            for i, record in enumerate(all_records, start=2):
+                if str(record.get('Gameweek')) == str(gameweek_num):
+                    # Check if identifier matches phone or name
+                    name_match = record.get('User Name', '').strip().lower() == user_lower
+                    phone_match = record.get('Phone Number', '').strip() == user_identifier
+                    
+                    if name_match or phone_match:
+                        # Update status to Lost
+                        status_sheet.update_cell(i, 13, 'Lost')  # Status column
+                        status_sheet.update_cell(i, 14, datetime.now().isoformat())  # Updated column
+                        found = True
+                        user_name = record.get('User Name', user_identifier)
+                        break
+            
+            if found:
+                return True, f"Eliminated {user_name} for GW{gameweek_num}"
+            else:
+                return False, f"User '{user_identifier}' not found in GW{gameweek_num}"
+                
+        except Exception as e:
+            print(f"Error eliminating user: {e}")
+            return False, str(e)
+    
+    def get_user_status_from_sheet(self, gameweek_num):
+        """Get user status from User Status sheet (no calculation needed)"""
+        try:
+            sheet = self.get_google_sheet()
+            if not sheet:
+                return None
+            
+            # Get User Status worksheet
+            try:
+                status_sheet = sheet.spreadsheet.worksheet("User Status")
+                all_records = status_sheet.get_all_records()
+            except:
+                # Fall back to old calculation method if sheet doesn't exist
+                return self.get_elimination_status(gameweek_num)
+            
+            results = {
+                'won': [],
+                'lost': [],
+                'pending': []
+            }
+            
+            # Process each record for this gameweek
+            for record in all_records:
+                if str(record.get('Gameweek')) == str(gameweek_num):
+                    user_name = record.get('User Name', '')
+                    status = record.get('Status', 'Pending')
+                    
+                    # Build player list with scoring indicators
+                    players_display = []
+                    for i in range(1, 5):
+                        player = record.get(f'Player {i}', '')
+                        scored = record.get(f'P{i} Scored', '').strip().lower()
+                        
+                        if player:
+                            if scored == 'yes':
+                                # Bold for scored players (WhatsApp formatting)
+                                players_display.append(f"*{player}*")
+                            elif scored == 'no':
+                                players_display.append(player)
+                            else:
+                                # Pending - show with indicator
+                                players_display.append(f"{player}")
+                    
+                    status_text = f"{user_name}: {', '.join(players_display)}"
+                    
+                    if status == 'Won':
+                        results['won'].append(status_text)
+                    elif status == 'Lost':
+                        results['lost'].append(status_text)
+                    else:
+                        results['pending'].append(status_text)
+            
+            # Add users who haven't submitted
+            submitted_phones = set()
+            for record in all_records:
+                if str(record.get('Gameweek')) == str(gameweek_num):
+                    submitted_phones.add(record.get('Phone Number'))
+            
+            for phone, name in self.user_map.items():
+                if phone not in submitted_phones:
+                    results['lost'].append(f"{name}: No picks submitted")
+            
+            return results
+            
+        except Exception as e:
+            print(f"Error getting user status from sheet: {e}")
+            # Fall back to calculation method
+            return self.get_elimination_status(gameweek_num)
