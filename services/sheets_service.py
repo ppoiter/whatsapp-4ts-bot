@@ -475,8 +475,11 @@ class SheetsService:
             for i, record in enumerate(all_records, start=2):
                 if str(record.get('Gameweek')) == str(gameweek_num):
                     # Check if identifier matches phone or name
-                    name_match = record.get('User Name', '').strip().lower() == user_lower
-                    phone_match = record.get('Phone Number', '').strip() == user_identifier
+                    user_name_in_sheet = str(record.get('User Name', '')).strip()
+                    phone_in_sheet = str(record.get('Phone Number', '')).strip()
+                    
+                    name_match = user_name_in_sheet.lower() == user_lower
+                    phone_match = phone_in_sheet == user_identifier
                     
                     if name_match or phone_match:
                         # Update status to Lost
