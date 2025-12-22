@@ -337,11 +337,15 @@ class SheetsService:
             # Check if user already has entry for this gameweek
             all_records = status_sheet.get_all_records()
             row_to_update = None
+            latest_timestamp = ''
             
+            # Find the most recent entry for this user in this gameweek
             for i, record in enumerate(all_records, start=2):  # Start at 2 because row 1 is headers
                 if str(record.get('Gameweek')) == str(gameweek_num) and record.get('Phone Number') == phone_number:
-                    row_to_update = i
-                    break
+                    record_timestamp = record.get('Timestamp', '')
+                    if not row_to_update or record_timestamp > latest_timestamp:
+                        row_to_update = i
+                        latest_timestamp = record_timestamp
             
             if row_to_update:
                 # Update existing row
@@ -512,42 +516,51 @@ class SheetsService:
                 'pending': []
             }
             
-            # Process each record for this gameweek
+            # Dictionary to store latest entry per phone number
+            latest_entries = {}
+            
+            # Process each record for this gameweek and keep only the latest per user
             for record in all_records:
                 if str(record.get('Gameweek')) == str(gameweek_num):
-                    user_name = record.get('User Name', '')
-                    status = record.get('Status', 'Pending')
+                    phone = record.get('Phone Number', '')
+                    timestamp = record.get('Timestamp', '')
                     
-                    # Build player list with scoring indicators
-                    players_display = []
-                    for i in range(1, 5):
-                        player = record.get(f'Player {i}', '')
-                        scored = record.get(f'P{i} Scored', '').strip().lower()
-                        
-                        if player:
-                            if scored == 'yes':
-                                # Bold for scored players (WhatsApp formatting)
-                                players_display.append(f"*{player}*")
-                            elif scored == 'no':
-                                players_display.append(player)
-                            else:
-                                # Pending - show with indicator
-                                players_display.append(f"{player}")
+                    # Keep the record with the latest timestamp for each phone
+                    if phone not in latest_entries or timestamp > latest_entries[phone]['Timestamp']:
+                        latest_entries[phone] = record
+            
+            # Process the latest entries
+            for phone, record in latest_entries.items():
+                user_name = record.get('User Name', '')
+                status = record.get('Status', 'Pending')
+                
+                # Build player list with scoring indicators
+                players_display = []
+                for i in range(1, 5):
+                    player = record.get(f'Player {i}', '')
+                    scored = record.get(f'P{i} Scored', '').strip().lower()
                     
-                    status_text = f"{user_name}: {', '.join(players_display)}"
-                    
-                    if status == 'Won':
-                        results['won'].append(status_text)
-                    elif status == 'Lost':
-                        results['lost'].append(status_text)
-                    else:
-                        results['pending'].append(status_text)
+                    if player:
+                        if scored == 'yes':
+                            # Bold for scored players (WhatsApp formatting)
+                            players_display.append(f"*{player}*")
+                        elif scored == 'no':
+                            players_display.append(player)
+                        else:
+                            # Pending - show with indicator
+                            players_display.append(f"{player}")
+                
+                status_text = f"{user_name}: {', '.join(players_display)}"
+                
+                if status == 'Won':
+                    results['won'].append(status_text)
+                elif status == 'Lost':
+                    results['lost'].append(status_text)
+                else:
+                    results['pending'].append(status_text)
             
             # Add users who haven't submitted
-            submitted_phones = set()
-            for record in all_records:
-                if str(record.get('Gameweek')) == str(gameweek_num):
-                    submitted_phones.add(record.get('Phone Number'))
+            submitted_phones = set(latest_entries.keys())
             
             for phone, name in self.user_map.items():
                 if phone not in submitted_phones:
