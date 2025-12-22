@@ -530,9 +530,14 @@ class SheetsService:
                         latest_entries[phone] = record
             
             # Process the latest entries
+            processed_users = set()  # Track which users we've already processed
+            
             for phone, record in latest_entries.items():
                 user_name = record.get('User Name', '')
                 status = record.get('Status', 'Pending')
+                
+                # Mark this user as processed
+                processed_users.add(user_name)
                 
                 # Build player list with scoring indicators
                 players_display = []
@@ -559,11 +564,9 @@ class SheetsService:
                 else:
                     results['pending'].append(status_text)
             
-            # Add users who haven't submitted
-            submitted_phones = set(latest_entries.keys())
-            
+            # Add users who haven't submitted (check by name to avoid phone format issues)
             for phone, name in self.user_map.items():
-                if phone not in submitted_phones:
+                if name not in processed_users:
                     results['lost'].append(f"{name}: No picks submitted")
             
             return results
