@@ -48,6 +48,13 @@ def whatsapp_webhook():
             resp.message("🚫 No active gameweek found. Please check back when the new season starts!")
             return str(resp)
 
+        # Show fixtures command (available to all users)
+        if message_body.lower().strip() in ['show fixtures', 'fixtures', 'games']:
+            fixtures_message = fixture_service.format_fixtures_message(current_gameweek)
+            resp = MessagingResponse()
+            resp.message(fixtures_message)
+            return str(resp)
+
         # Check for admin commands first (for admin user)
         if from_number == ADMIN_PHONE:
             admin_response = gameweek_service.process_admin_command(message_body, current_gameweek)
@@ -61,13 +68,6 @@ def whatsapp_webhook():
                 message_service.send_deadline_summary(current_gameweek)
                 resp = MessagingResponse()
                 resp.message(f"📊 Sending Gameweek {current_gameweek} summary...")
-                return str(resp)
-            
-            # Show fixtures command
-            if message_body.lower().strip() in ['show fixtures', 'fixtures', 'games']:
-                fixtures_message = fixture_service.format_fixtures_message(current_gameweek)
-                resp = MessagingResponse()
-                resp.message(fixtures_message)
                 return str(resp)
         
         # Handle specific commands for all users before trying to parse as picks
