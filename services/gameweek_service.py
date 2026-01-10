@@ -13,14 +13,14 @@ class GameweekService:
         message_original = message_body.strip()
         
         # Check for scoring commands
-        if message_lower.startswith('goal ') or message_lower.startswith('no goal '):
-            if message_lower.startswith('goal '):
+        if message_lower.startswith('1 ') or message_lower.startswith('0 '):
+            if message_lower.startswith('1 '):
                 # Player scored - preserve original case
-                player = message_original[5:].strip()  # Skip "goal "
+                player = message_original[2:].strip()  # Skip "1 "
                 scored = True
             else:
                 # Player didn't score - preserve original case
-                player = message_original[8:].strip()  # Skip "no goal "
+                player = message_original[2:].strip()  # Skip "0 "
                 scored = False
             
             if player:
@@ -61,15 +61,15 @@ class GameweekService:
         # Help command for admin
         elif message_lower in ['help', 'commands']:
             return ("📋 ADMIN COMMANDS:\n"
-                    "• goal [player name] - Mark player as scored\n"
-                    "• no goal [player name] - Mark player as didn't score\n" 
+                    "• 1 [player name] - Mark player as scored\n"
+                    "• 0 [player name] - Mark player as didn't score\n" 
                     "• eliminate [user] - Manually eliminate user\n"
                     "• reinstate [user] - Reinstate eliminated user\n"
                     "• show active - Show win/lose status\n"
                     "• show scorers - List all players who scored\n"
                     "• summary/picks - Show all picks\n"
                     "• fixtures - Show fixtures\n\n"
-                    "Example: goal Mohamed Salah")
+                    "Example: 1 Mohamed Salah")
         
         # Show all scorers for the gameweek
         elif message_lower in ['show scorers', 'scorers', 'goals']:
