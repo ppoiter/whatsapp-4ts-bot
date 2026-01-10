@@ -3,6 +3,7 @@ from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 import os
 
+from config.validation import validate_environment
 from config.settings import ADMIN_PHONE, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, USER_MAP
 from services.sheets_service import SheetsService
 from services.message_service import MessageService
@@ -184,6 +185,11 @@ def gameweek_info():
         return {'status': 'no_active_gameweek'}
 
 if __name__ == '__main__':
+    # Validate environment variables first
+    if not validate_environment():
+        print("❌ Please fix environment configuration before starting the bot")
+        exit(1)
+    
     # Setup Google Sheets headers
     sheets_service.setup_google_sheet_headers()
     

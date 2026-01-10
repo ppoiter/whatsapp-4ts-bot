@@ -46,30 +46,20 @@ GAMEWEEK_SCHEDULE = [
     # (38, datetime(2026, 5, 24), datetime(2026, 5, 24, 15, 30), datetime(2026, 5, 25, 20, 00)),
 ]
 
-# User mapping
+# User mapping - configure your participants
+# Format: "phone_number": "display_name"
+# Example: "+1234567890": "John Doe"
 USER_MAP = {
-    "+447387303123": "Aaron",
-    "+16043175991": "Adam",
-    "+64272806500": "Aubrey",
-    "+31618271215": "Ben",
-    "+447950139194": "Calum",
-    "+447950904385": "Dave",
-    "+447845948768": "David",
-    "+64211206201": "Dom",
-    "+447871617112": "Fraser",
-    "+447587626672": "Jerome",
-    "+6421581535": "John",
-    "+447517587086": "Joss",
-    "+447375356774": "Peter",
-    "+447526186549": "Rohan",
-    "+447438895095": "Sam",
+    # Add your participants here
+    # "+1234567890": "Player 1",
+    # "+0987654321": "Player 2",
 }
 
 # Google Sheets setup
 SPREADSHEET_ID = os.environ.get('GOOGLE_SHEET_ID', 'your-google-sheet-id')
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
-ADMIN_PHONE = "+447375356774"
+ADMIN_PHONE = os.environ.get('ADMIN_PHONE', '')
 
 # Twilio setup
 TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
