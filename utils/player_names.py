@@ -5,5 +5,7 @@ PLAYER_CORRECTIONS = {
     "morgan rogers": "Rogers",
     "calvert-lewin": "DCL",
     "mbuemo": "Mbeumo",
-    "enzo fernandez": "Fernandez"
+    "enzo fernandez": "E. Fernandez",
+    "enzo": "E. Fernandez",
+    "bruno fernandes": "B. Fernandes" 
 }
