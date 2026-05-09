@@ -13,8 +13,8 @@ class PlayerPick:
     deadline: datetime
 
     def is_valid(self) -> bool:
-        """Check if the pick has exactly 4 players"""
-        return len(self.players) == 4
+        """Check if the pick has exactly 8 players"""
+        return len(self.players) == 8
 
     def to_sheet_row(self) -> List[str]:
         """Convert to Google Sheets row format"""
@@ -28,6 +28,10 @@ class PlayerPick:
             self.players[1] if len(self.players) > 1 else '',
             self.players[2] if len(self.players) > 2 else '',
             self.players[3] if len(self.players) > 3 else '',
+            self.players[4] if len(self.players) > 4 else '',
+            self.players[5] if len(self.players) > 5 else '',
+            self.players[6] if len(self.players) > 6 else '',
+            self.players[7] if len(self.players) > 7 else '',
         ]
 
 @dataclass

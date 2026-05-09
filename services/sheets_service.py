@@ -33,7 +33,7 @@ class SheetsService:
         try:
             sheet = self.get_google_sheet()
             if sheet:
-                headers = ['Timestamp', 'Phone Number', 'User ID', 'Gameweek', 'Deadline', 'Player 1', 'Player 2', 'Player 3', 'Player 4']
+                headers = ['Timestamp', 'Phone Number', 'User ID', 'Gameweek', 'Deadline', 'Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6', 'Player 7', 'Player 8']
                 
                 if not sheet.row_values(1):
                     sheet.insert_row(headers, 1)
@@ -65,6 +65,10 @@ class SheetsService:
                 players[1] if len(players) > 1 else '',  # Player 2
                 players[2] if len(players) > 2 else '',  # Player 3
                 players[3] if len(players) > 3 else '',  # Player 4
+                players[4] if len(players) > 4 else '',  # Player 5
+                players[5] if len(players) > 5 else '',  # Player 6
+                players[6] if len(players) > 6 else '',  # Player 7
+                players[7] if len(players) > 7 else '',  # Player 8
             ]
             
             sheet.append_row(row_data)
@@ -98,9 +102,9 @@ class SheetsService:
                     phone = f'+{phone_int}' if phone_int else None
                     timestamp = record.get('Timestamp')
                     
-                    # Get the 4 players
+                    # Get the 8 players
                     players = []
-                    for i in range(1, 5):
+                    for i in range(1, 9):
                         player = record.get(f'Player {i}', '').strip()
                         if player:
                             players.append(player)
@@ -201,7 +205,7 @@ class SheetsService:
             return False, str(e)
 
     def get_elimination_status(self, gameweek_num):
-        """Get win/lose status for all users in a gameweek (Four to Score rules)"""
+        """Get win/lose status for all users in a gameweek (Final Weekend 8-pick rules)"""
         try:
             sheet = self.get_google_sheet()
             if not sheet:
@@ -302,11 +306,13 @@ class SheetsService:
                 return True, "User Status sheet already exists"
             except:
                 # Create the sheet
-                status_sheet = sheet.spreadsheet.add_worksheet(title="User Status", rows=500, cols=15)
+                status_sheet = sheet.spreadsheet.add_worksheet(title="User Status", rows=500, cols=19)
                 headers = [
                     'Timestamp', 'Gameweek', 'Phone Number', 'User Name',
                     'Player 1', 'P1 Scored', 'Player 2', 'P2 Scored',
                     'Player 3', 'P3 Scored', 'Player 4', 'P4 Scored',
+                    'Player 5', 'P5 Scored', 'Player 6', 'P6 Scored',
+                    'Player 7', 'P7 Scored', 'Player 8', 'P8 Scored',
                     'Status', 'Updated'
                 ]
                 status_sheet.insert_row(headers, 1)
@@ -349,13 +355,19 @@ class SheetsService:
             
             if row_to_update:
                 # Update existing row
-                status_sheet.update(f'A{row_to_update}:N{row_to_update}', [[
+                status_sheet.update(f'A{row_to_update}:S{row_to_update}', [[
                     datetime.now().isoformat(),
                     gameweek_num,
                     phone_number,
                     user_name,
-                    players[0], '', players[1], '', 
-                    players[2], '', players[3], '',
+                    players[0] if len(players) > 0 else '', '',
+                    players[1] if len(players) > 1 else '', '',
+                    players[2] if len(players) > 2 else '', '',
+                    players[3] if len(players) > 3 else '', '',
+                    players[4] if len(players) > 4 else '', '',
+                    players[5] if len(players) > 5 else '', '',
+                    players[6] if len(players) > 6 else '', '',
+                    players[7] if len(players) > 7 else '', '',
                     'Pending',
                     datetime.now().isoformat()
                 ]])
@@ -366,8 +378,14 @@ class SheetsService:
                     gameweek_num,
                     phone_number,
                     user_name,
-                    players[0], '', players[1], '', 
-                    players[2], '', players[3], '',
+                    players[0] if len(players) > 0 else '', '',
+                    players[1] if len(players) > 1 else '', '',
+                    players[2] if len(players) > 2 else '', '',
+                    players[3] if len(players) > 3 else '', '',
+                    players[4] if len(players) > 4 else '', '',
+                    players[5] if len(players) > 5 else '', '',
+                    players[6] if len(players) > 6 else '', '',
+                    players[7] if len(players) > 7 else '', '',
                     'Pending',
                     datetime.now().isoformat()
                 ])
@@ -406,7 +424,11 @@ class SheetsService:
                         ('Player 1', 'P1 Scored', 5, 6),
                         ('Player 2', 'P2 Scored', 7, 8),
                         ('Player 3', 'P3 Scored', 9, 10),
-                        ('Player 4', 'P4 Scored', 11, 12)
+                        ('Player 4', 'P4 Scored', 11, 12),
+                        ('Player 5', 'P5 Scored', 13, 14),
+                        ('Player 6', 'P6 Scored', 15, 16),
+                        ('Player 7', 'P7 Scored', 17, 18),
+                        ('Player 8', 'P8 Scored', 19, 20)
                     ]
                     
                     for player_col, score_col, player_idx, score_idx in player_columns:
@@ -424,26 +446,23 @@ class SheetsService:
                         
                         # Re-fetch the row to get updated values
                         row_values = status_sheet.row_values(i)
-                        for score_idx in [6, 8, 10, 12]:  # P1, P2, P3, P4 Scored columns
+                        for score_idx in [6, 8, 10, 12, 14, 16, 18, 20]:  # P1-P8 Scored columns
                             if score_idx <= len(row_values):
                                 score_val = row_values[score_idx - 1].strip().lower() if score_idx - 1 < len(row_values) else ''
                                 if score_val == 'no':
-                                    all_scored = False
                                     any_failed = True
                                 elif score_val != 'yes':
-                                    all_scored = False
                                     all_checked = False
                         
-                        # Update status
-                        if any_failed:
-                            new_status = 'Lost'
-                        elif all_scored and all_checked:
-                            new_status = 'Won'
+                        # For final weekend: use points-based system instead of win/lose
+                        # Status now reflects participation rather than traditional win/lose
+                        if all_checked:
+                            new_status = 'Active'  # All players have been checked
                         else:
-                            new_status = 'Pending'
+                            new_status = 'Pending'  # Some players not yet checked
                         
-                        status_sheet.update_cell(i, 13, new_status)  # Status column
-                        status_sheet.update_cell(i, 14, datetime.now().isoformat())  # Updated column
+                        status_sheet.update_cell(i, 17, new_status)  # Status column (moved to column 17)
+                        status_sheet.update_cell(i, 18, datetime.now().isoformat())  # Updated column (moved to column 18)
                         updates_made += 1
             
             return True, f"Updated {updates_made} user statuses for {normalized_player}"
@@ -484,8 +503,8 @@ class SheetsService:
                     
                     if name_match or phone_match:
                         # Update status to Lost for ALL matching entries
-                        status_sheet.update_cell(i, 13, 'Lost')  # Status column
-                        status_sheet.update_cell(i, 14, datetime.now().isoformat())  # Updated column
+                        status_sheet.update_cell(i, 17, 'Lost')  # Status column
+                        status_sheet.update_cell(i, 18, datetime.now().isoformat())  # Updated column
                         rows_updated.append(i)
                         user_name_found = user_name_in_sheet
             
@@ -530,8 +549,8 @@ class SheetsService:
                     
                     if name_match or phone_match:
                         # Update status to Pending for ALL matching entries
-                        status_sheet.update_cell(i, 13, 'Pending')  # Status column
-                        status_sheet.update_cell(i, 14, datetime.now().isoformat())  # Updated column
+                        status_sheet.update_cell(i, 17, 'Pending')  # Status column
+                        status_sheet.update_cell(i, 18, datetime.now().isoformat())  # Updated column
                         rows_updated.append(i)
                         user_name_found = user_name_in_sheet
             
@@ -590,7 +609,7 @@ class SheetsService:
                 
                 # Build player list with scoring indicators
                 players_display = []
-                for i in range(1, 5):
+                for i in range(1, 9):
                     player = record.get(f'Player {i}', '')
                     scored = record.get(f'P{i} Scored', '').strip().lower()
                     

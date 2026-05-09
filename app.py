@@ -103,7 +103,7 @@ def whatsapp_webhook():
         players = parse_player_picks(message_body)
         resp = MessagingResponse()
         
-        if len(players) == 4:
+        if len(players) == 8:
             # Valid picks - add to sheet
             success, result = sheets_service.add_to_google_sheet(from_number, players, current_gameweek, deadline)
             
@@ -120,12 +120,16 @@ def whatsapp_webhook():
         else:
             deadline_str = format_deadline(deadline)
             response_text = (
-                f"❌ Please send exactly 4 player names for Gameweek {current_gameweek}\n\n"
+                f"❌ Please send exactly 8 player names for Gameweek {current_gameweek}\n\n"
                 f"Example:\n"
                 f"Haaland\n"
                 f"Salah\n"
                 f"Saka\n"
-                f"Palmer\n\n"
+                f"Palmer\n"
+                f"Watkins\n"
+                f"Isak\n"
+                f"Son\n"
+                f"Wissa\n\n"
                 f"⏰ Deadline: {deadline_str}"
             )
         
