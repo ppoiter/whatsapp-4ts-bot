@@ -300,3 +300,65 @@ class GameweekService:
             message += "\n"
         
         return message
+    
+    def get_player_weightings(self, gameweek_num):
+        """Show weightings for all picked players, sorted by weight (ascending)"""
+        try:
+            # Get all picks for this gameweek
+            all_picks = self.sheets_service.get_all_picks_for_gameweek(gameweek_num)
+            if not all_picks:
+                return "No picks found for this gameweek."
+            
+            # Count how many times each player was picked
+            player_pick_counts = {}
+            total_pickers = len(all_picks)
+            
+            for phone, pick_data in all_picks.items():
+                players = pick_data['players']
+                for player in players:
+                    player_normalized = player.strip().title()
+                    if player_normalized:
+                        if player_normalized not in player_pick_counts:
+                            player_pick_counts[player_normalized] = 0
+                        player_pick_counts[player_normalized] += 1
+            
+            if not player_pick_counts:
+                return "No players have been picked yet."
+            
+            # Calculate weightings for each player
+            player_weightings = []
+            for player, pick_count in player_pick_counts.items():
+                # For weighting calculation, we use other_pickers (exclude the current picker)
+                # Since we want to show the weight any individual picker would get
+                other_pickers = pick_count - 1  # Subtract 1 for the picker themselves
+                weight = max(0.1, 1 - 0.1 * other_pickers)
+                player_weightings.append({
+                    'player': player,
+                    'pick_count': pick_count,
+                    'weight': weight
+                })
+            
+            # Sort by weight (ascending - least popular first)
+            player_weightings.sort(key=lambda x: x['weight'])
+            
+            # Build the message
+            message = f"📊 PLAYER WEIGHTINGS (GW{gameweek_num})\n"
+            message += "=" * 30 + "\n\n"
+            message += f"Total participants: {total_pickers}\n\n"
+            
+            for item in player_weightings:
+                pick_count = item['pick_count']
+                weight = item['weight']
+                player = item['player']
+                
+                # Show percentage for easier understanding
+                percentage = f"{weight * 100:.0f}%"
+                
+                message += f"{weight:.1f} ({percentage}) — {player} ({pick_count} picks)\n"
+            
+            message += f"\n💡 Formula: max(0.1, 1.0 - 0.1 × other_pickers)"
+            
+            return message
+                
+        except Exception as e:
+            return f"❌ Error getting player weightings: {str(e)}"

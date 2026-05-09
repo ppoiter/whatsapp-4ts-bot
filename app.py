@@ -55,6 +55,13 @@ def whatsapp_webhook():
             resp.message(fixtures_message)
             return str(resp)
 
+        # Show weightings command (available to all users)
+        if message_body.lower().strip() in ['show weightings', 'weightings', 'show weights', 'weights']:
+            weightings_message = gameweek_service.get_player_weightings(current_gameweek)
+            resp = MessagingResponse()
+            resp.message(weightings_message)
+            return str(resp)
+
         # Check for admin commands first (for admin user)
         if from_number == ADMIN_PHONE:
             admin_response = gameweek_service.process_admin_command(message_body, current_gameweek)
