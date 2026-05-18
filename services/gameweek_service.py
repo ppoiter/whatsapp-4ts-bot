@@ -344,19 +344,13 @@ class GameweekService:
             # Build the message
             message = f"📊 PLAYER WEIGHTINGS (GW{gameweek_num})\n"
             message += "=" * 30 + "\n\n"
-            message += f"Total participants: {total_pickers}\n\n"
             
             for item in player_weightings:
                 pick_count = item['pick_count']
                 weight = item['weight']
                 player = item['player']
                 
-                # Show percentage for easier understanding
-                percentage = f"{weight * 100:.0f}%"
-                
-                message += f"{weight:.1f} ({percentage}) — {player} ({pick_count} picks)\n"
-            
-            message += f"\n💡 Formula: max(0.1, 1.0 - 0.1 × other_pickers)"
+                message += f"{weight:.1f} — {player} ({pick_count} picks)\n"
             
             return message
                 
