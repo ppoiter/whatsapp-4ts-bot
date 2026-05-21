@@ -43,7 +43,7 @@ GAMEWEEK_SCHEDULE = [
     (35, datetime(2026, 5, 1), datetime(2026, 5, 1, 18, 30), datetime(2026, 5, 4, 22, 00)),
     (36, datetime(2026, 5, 9), datetime(2026, 5, 9, 15, 00), datetime(2026, 5, 11, 22, 00)),
     (37, datetime(2026, 5, 16), datetime(2026, 5, 16, 11, 00), datetime(2026, 5, 17, 18, 00)),
-    (38, datetime(2026, 5, 23), datetime(2026, 5, 23, 13, 30), datetime(2026, 5, 24, 22, 00)),
+    (38, datetime(2026, 5, 23), datetime(2026, 5, 23, 18, 30), datetime(2026, 5, 24, 22, 00)),
 ]
 
 # User mapping
