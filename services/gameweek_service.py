@@ -309,25 +309,33 @@ class GameweekService:
             if not all_picks:
                 return "No picks found for this gameweek."
             
-            # Count how many times each player was picked
-            player_pick_counts = {}
+            # Count how many times each player was picked and track who picked them
+            player_pick_data = {}
             total_pickers = len(all_picks)
             
             for phone, pick_data in all_picks.items():
+                user_name = pick_data['user_name']
                 players = pick_data['players']
                 for player in players:
                     player_normalized = player.strip().title()
                     if player_normalized:
-                        if player_normalized not in player_pick_counts:
-                            player_pick_counts[player_normalized] = 0
-                        player_pick_counts[player_normalized] += 1
+                        if player_normalized not in player_pick_data:
+                            player_pick_data[player_normalized] = {
+                                'count': 0,
+                                'pickers': []
+                            }
+                        player_pick_data[player_normalized]['count'] += 1
+                        player_pick_data[player_normalized]['pickers'].append(user_name)
             
-            if not player_pick_counts:
+            if not player_pick_data:
                 return "No players have been picked yet."
             
             # Calculate weightings for each player
             player_weightings = []
-            for player, pick_count in player_pick_counts.items():
+            for player, data in player_pick_data.items():
+                pick_count = data['count']
+                pickers = data['pickers']
+                
                 # Skip players with only 1 pick
                 if pick_count == 1:
                     continue
@@ -339,7 +347,8 @@ class GameweekService:
                 player_weightings.append({
                     'player': player,
                     'pick_count': pick_count,
-                    'weight': weight
+                    'weight': weight,
+                    'pickers': pickers
                 })
             
             # Sort by weight (ascending - least popular first)
@@ -352,8 +361,9 @@ class GameweekService:
             for item in player_weightings:
                 weight = item['weight']
                 player = item['player']
+                pickers = ', '.join(item['pickers'])
                 
-                message += f"{weight:.1f} — {player}\n"
+                message += f"{weight:.1f} — {player} ({pickers})\n"
             
             return message
                 
