@@ -363,7 +363,7 @@ class GameweekService:
                 player = item['player']
                 pickers = ', '.join(item['pickers'])
                 
-                message += f"{weight:.1f} — {player} ({pickers})\n"
+                message += f"{weight:.1f} — *{player}* ({pickers})\n"
             
             return message
                 
