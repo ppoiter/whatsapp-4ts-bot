@@ -328,6 +328,10 @@ class GameweekService:
             # Calculate weightings for each player
             player_weightings = []
             for player, pick_count in player_pick_counts.items():
+                # Skip players with only 1 pick
+                if pick_count == 1:
+                    continue
+                    
                 # For weighting calculation, we use other_pickers (exclude the current picker)
                 # Since we want to show the weight any individual picker would get
                 other_pickers = pick_count - 1  # Subtract 1 for the picker themselves
@@ -346,11 +350,10 @@ class GameweekService:
             message += "=" * 30 + "\n\n"
             
             for item in player_weightings:
-                pick_count = item['pick_count']
                 weight = item['weight']
                 player = item['player']
                 
-                message += f"{weight:.1f} — {player} ({pick_count} picks)\n"
+                message += f"{weight:.1f} — {player}\n"
             
             return message
                 
