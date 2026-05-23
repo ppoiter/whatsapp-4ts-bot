@@ -69,6 +69,10 @@ class GameweekService:
             else:
                 return "Please specify a user name (e.g., 'reinstate Peter')"
         
+        # Show unique picks command
+        elif message_lower in ['show unique', 'unique', 'unique picks', 'show unique picks']:
+            return self._show_unique_picks(gameweek_num)
+        
         # Help command for admin
         elif message_lower in ['help', 'commands']:
             return ("📋 ADMIN COMMANDS:\n"
@@ -80,6 +84,7 @@ class GameweekService:
                     "• leaderboard detail - Show detailed leaderboard\n"
                     "• show active - Show win/lose status\n"
                     "• show scorers - List all players who scored\n"
+                    "• show unique - Show unique picks (1 picker only)\n"
                     "• summary/picks - Show all picks\n"
                     "• fixtures - Show fixtures\n\n"
                     "Example: goal Mohamed Salah")
@@ -369,3 +374,60 @@ class GameweekService:
                 
         except Exception as e:
             return f"❌ Error getting player weightings: {str(e)}"
+    
+    def _show_unique_picks(self, gameweek_num):
+        """Show players that were picked by only one person"""
+        try:
+            # Get all picks for this gameweek
+            all_picks = self.sheets_service.get_all_picks_for_gameweek(gameweek_num)
+            if not all_picks:
+                return "No picks found for this gameweek."
+            
+            # Count how many times each player was picked and track who picked them
+            player_pick_data = {}
+            
+            for phone, pick_data in all_picks.items():
+                user_name = pick_data['user_name']
+                players = pick_data['players']
+                for player in players:
+                    player_normalized = player.strip().title()
+                    if player_normalized:
+                        if player_normalized not in player_pick_data:
+                            player_pick_data[player_normalized] = {
+                                'count': 0,
+                                'pickers': []
+                            }
+                        player_pick_data[player_normalized]['count'] += 1
+                        player_pick_data[player_normalized]['pickers'].append(user_name)
+            
+            if not player_pick_data:
+                return "No players have been picked yet."
+            
+            # Filter for unique picks (count == 1)
+            unique_picks = []
+            for player, data in player_pick_data.items():
+                if data['count'] == 1:
+                    unique_picks.append({
+                        'player': player,
+                        'picker': data['pickers'][0]  # Only one picker
+                    })
+            
+            if not unique_picks:
+                return f"🔍 No unique picks found for Gameweek {gameweek_num}.\nAll players were picked by multiple people."
+            
+            # Sort by player name
+            unique_picks.sort(key=lambda x: x['player'])
+            
+            # Build the message
+            message = f"🎯 UNIQUE PICKS (GW{gameweek_num})\n"
+            message += "=" * 25 + "\n\n"
+            
+            for item in unique_picks:
+                player = item['player']
+                picker = item['picker']
+                message += f"*{player}* — {picker}\n"
+            
+            return message
+            
+        except Exception as e:
+            return f"❌ Error getting unique picks: {str(e)}"
