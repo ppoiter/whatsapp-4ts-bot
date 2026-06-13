@@ -119,8 +119,16 @@ class WCScoringService:
         message += "=" * 30 + "\n\n"
         
         for i, (player_name, score) in enumerate(sorted_players, 1):
-            score_str = f"{score:.1f}" if isinstance(score, float) else str(score)
-            message += f"{i}. {player_name}  —  {score_str} pts\n"
+            # Format score without unnecessary .0
+            if isinstance(score, float) and score.is_integer():
+                score_str = str(int(score))
+            else:
+                score_str = f"{score:.1f}" if isinstance(score, float) else str(score)
+            
+            # Strip surname (keep only first name)
+            first_name = player_name.split()[0] if player_name else player_name
+            
+            message += f"{i}. {first_name}  —  {score_str} pts\n"
         
         return message
     
