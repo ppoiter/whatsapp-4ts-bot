@@ -95,7 +95,7 @@ class WCScoringService:
                     
                     # Award points for correct prediction
                     if pick == correct_pick:
-                        total_points += 0.5
+                        total_points += 1
                     
                     break
         
