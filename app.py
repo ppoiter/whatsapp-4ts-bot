@@ -12,6 +12,10 @@ from services.fixture_service import FixtureService
 from utils.date_utils import get_current_gameweek, is_deadline_passed, format_deadline
 from utils.text_utils import parse_player_picks
 
+# World Cup imports
+from services.wc_command_service import WCCommandService
+from services.wc_sheets_service import WCSheetsService
+
 app = Flask(__name__)
 
 # Initialize services
@@ -21,6 +25,10 @@ message_service = MessageService(twilio_client)
 gameweek_service = GameweekService()
 scheduler_service = SchedulerService(message_service)
 fixture_service = FixtureService()
+
+# World Cup services
+wc_sheets_service = WCSheetsService()
+wc_command_service = WCCommandService(wc_sheets_service, twilio_client)
 
 @app.route('/send-summary/<int:gameweek>', methods=['POST'])
 def manual_summary_trigger(gameweek):
@@ -39,6 +47,13 @@ def whatsapp_webhook():
         message_body = request.form.get('Body', '')
         
         print(f"Received message from {from_number}: {message_body}")
+        
+        # Check if this is a World Cup command (prioritize WC commands)
+        if message_body.lower().strip().startswith('wc '):
+            response_text = wc_command_service.handle_command(message_body, from_number)
+            resp = MessagingResponse()
+            resp.message(response_text)
+            return str(resp)
         
         # Check current gameweek
         current_gameweek, deadline = get_current_gameweek()
@@ -203,6 +218,9 @@ if __name__ == '__main__':
     
     # Setup Fixtures sheet
     fixture_service.setup_fixtures_sheet()
+    
+    # Setup World Cup sheets connection
+    wc_sheets_service.setup_master_sheet_connection()
     
     # Start the deadline summary scheduler
     summary_scheduler = scheduler_service.schedule_deadline_summaries()
