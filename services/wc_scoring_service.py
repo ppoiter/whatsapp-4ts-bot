@@ -28,8 +28,8 @@ class WCScoringService:
                 display_name = player_data['display_name']
                 total_score = 0
                 
-                # Score group stage matches from Forms 2, 3, 4
-                for form_num in [2, 3, 4]:
+                # Score group stage matches from Forms 1, 2, 3
+                for form_num in [1, 2, 3]:
                     if form_num in player_data['forms']:
                         form_picks = player_data['forms'][form_num]['picks']
                         total_score += self._score_group_stage_picks(form_picks, all_results, form_num)
@@ -56,11 +56,11 @@ class WCScoringService:
         total_points = 0
         
         # Get matchday for this form
-        if form_num == 2:
+        if form_num == 1:
             target_matchday = 1
-        elif form_num == 3:
+        elif form_num == 2:
             target_matchday = 2
-        elif form_num == 4:
+        elif form_num == 3:
             target_matchday = 3
         else:
             return 0
@@ -151,12 +151,12 @@ class WCScoringService:
         total_score = 0
         
         # Group stage scoring
-        for form_num in [2, 3, 4]:
+        for form_num in [1, 2, 3]:
             if form_num in player_data['forms']:
                 form_picks = player_data['forms'][form_num]['picks']
                 form_score = self._score_group_stage_picks(form_picks, all_results, form_num)
                 total_score += form_score
-                message += f"📋 Form {form_num} (MD{form_num-1}): {form_score} pts\n"
+                message += f"📋 Form {form_num} (MD{form_num}): {form_score} pts\n"
         
         # Bonus points
         bonus_total = 0
