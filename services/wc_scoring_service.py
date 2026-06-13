@@ -80,16 +80,22 @@ class WCScoringService:
                     home_score = result.get('home_score', 0)
                     away_score = result.get('away_score', 0)
                     
+                    # Get team names from match_key
+                    teams = match_key.split(' vs ')
+                    home_team = teams[0] if len(teams) == 2 else ''
+                    away_team = teams[1] if len(teams) == 2 else ''
+                    
+                    # Determine correct prediction format
                     if home_score > away_score:
-                        actual_result = 'Home'
+                        correct_pick = home_team
                     elif away_score > home_score:
-                        actual_result = 'Away'
+                        correct_pick = away_team
                     else:
-                        actual_result = 'Draw'
+                        correct_pick = 'Draw'
                     
                     # Award points for correct prediction
-                    if pick == actual_result:
-                        total_points += 1
+                    if pick == correct_pick:
+                        total_points += 0.5
                     
                     break
         
