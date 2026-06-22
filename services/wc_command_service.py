@@ -98,12 +98,13 @@ class WCCommandService:
             )
             
             if success:
-                # Format confirmation
+                self.scoring_service.invalidate_cache()
+
                 if stage == 'group' and matchday:
                     stage_text = f"Group Stage, MD{matchday}"
                 else:
                     stage_text = stage.title()
-                
+
                 return f"✅ {home_team} {home_score}-{away_score} {away_team} logged ({stage_text})"
             else:
                 return f"❌ Error logging result: {message}"
@@ -136,6 +137,7 @@ class WCCommandService:
             success, message = self.sheets_service.award_bonus_points(form_num, player_names)
             
             if success:
+                self.scoring_service.invalidate_cache()
                 return f"✅ Bonus (Form {form_num}): 2pts awarded to {message.split(': ')[1]}"
             else:
                 return f"❌ Error awarding bonus: {message}"

@@ -4,49 +4,62 @@ from config.settings import FIFA_RANK
 class WCScoringService:
     def __init__(self, sheets_service):
         self.sheets_service = sheets_service
-    
+        self._leaderboard_cache = None
+        self._cached_result_count = -1
+
+    def invalidate_cache(self):
+        self._leaderboard_cache = None
+        self._cached_result_count = -1
+
     def strip_rank(self, team_name):
         """Strip ranking suffix from team names, e.g. 'England (#4)' -> 'England'"""
         return re.sub(r' \(#\d+\)', '', team_name.strip())
-    
+
     def calculate_leaderboard(self):
         """Calculate current leaderboard based on available results"""
         try:
-            # Get all data
-            all_picks = self.sheets_service.get_all_picks()
             all_results = self.sheets_service.get_all_results()
+            total_results = len(all_results)
+
+            if self._leaderboard_cache is not None and total_results == self._cached_result_count:
+                return self._leaderboard_cache
+
+            all_picks = self.sheets_service.get_all_picks()
             all_bonus = self.sheets_service.get_all_bonus_awards()
-            
+
             if not all_picks:
                 return "No picks found yet."
-            
+
             # Calculate scores for each player
             player_scores = {}
-            total_results = len(all_results)
-            
+
             for normalized_name, player_data in all_picks.items():
                 display_name = player_data['display_name']
                 total_score = 0
-                
+
                 # Score group stage matches from Forms 1, 2, 3
                 for form_num in [1, 2, 3]:
                     if form_num in player_data['forms']:
                         form_picks = player_data['forms'][form_num]['picks']
                         total_score += self._score_group_stage_picks(form_picks, all_results, form_num)
-                
+
                 # Add bonus points
                 for bonus_award in all_bonus:
                     if self.sheets_service.normalize_name(bonus_award.get('player', '')) == normalized_name:
                         total_score += bonus_award.get('points', 0)
-                
+
                 player_scores[display_name] = total_score
-            
+
             # Sort by score (descending)
             sorted_players = sorted(player_scores.items(), key=lambda x: x[1], reverse=True)
-            
-            # Format leaderboard
-            return self._format_leaderboard(sorted_players, total_results)
-            
+
+            latest_result = all_results[-1] if all_results else None
+            result = self._format_leaderboard(sorted_players, total_results, latest_result)
+
+            self._leaderboard_cache = result
+            self._cached_result_count = total_results
+            return result
+
         except Exception as e:
             print(f"Error calculating leaderboard: {e}")
             return f"❌ Error calculating leaderboard: {str(e)}"
@@ -106,30 +119,36 @@ class WCScoringService:
         # Placeholder for knockout scoring
         return 0
     
-    def _format_leaderboard(self, sorted_players, total_results):
+    def _format_leaderboard(self, sorted_players, total_results, latest_result=None):
         """Format leaderboard for WhatsApp display"""
         if not sorted_players:
             return "No players found."
-        
-        # Determine how many group stage matches have been played
+
         group_matches_total = 72  # 24 matches × 3 matchdays
         progress_text = f"({total_results}/{group_matches_total} group results)"
-        
+
         message = f"🏆 WC 2026 LEADERBOARD {progress_text}\n"
+
+        if latest_result:
+            match_key = latest_result.get('match_key', '')
+            h = latest_result.get('home_score', '')
+            a = latest_result.get('away_score', '')
+            md = latest_result.get('matchday', '')
+            md_text = f" (MD{md})" if md else ""
+            message += f"Last: {match_key} {h}-{a}{md_text}\n"
+
         message += "=" * 30 + "\n\n"
-        
+
         for i, (player_name, score) in enumerate(sorted_players, 1):
-            # Format score without unnecessary .0
             if isinstance(score, float) and score.is_integer():
                 score_str = str(int(score))
             else:
                 score_str = f"{score:.1f}" if isinstance(score, float) else str(score)
-            
-            # Strip surname (keep only first name)
+
             first_name = player_name.split()[0] if player_name else player_name
-            
+
             message += f"{i}. {first_name}  —  {score_str} pts\n"
-        
+
         return message
     
     def get_detailed_scores(self, player_name=None):
