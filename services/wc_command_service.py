@@ -19,27 +19,31 @@ class WCCommandService:
             # Leaderboard command
             if command in ['leaderboard', 'standings', 'scores', 'table']:
                 return self.scoring_service.calculate_leaderboard()
-            
-            # Admin-only commands
-            if from_number != ADMIN_PHONE:
-                return "⛔ Only the admin can enter results and award bonus points."
-            
-            # Result entry command
-            if command.startswith('result '):
-                return self._handle_result_command(original_command[7:])
-            
-            # Bonus points command
-            if command.startswith('bonus '):
-                return self._handle_bonus_command(original_command[6:])
-            
-            # Help command
-            if command in ['help', 'commands']:
-                return self._get_help_text()
-            
-            # Detailed scores command
+
+            # Detailed scores command (open to all)
             if command.startswith('scores '):
                 player_name = original_command[7:].strip()
                 return self.scoring_service.get_detailed_scores(player_name)
+
+            # Help command
+            if command in ['help', 'commands']:
+                return self._get_help_text()
+
+            # Admin-only commands
+            if from_number != ADMIN_PHONE:
+                return "⛔ Only the admin can enter results and award bonus points."
+
+            # Result entry command
+            if command.startswith('result '):
+                return self._handle_result_command(original_command[7:])
+
+            # Group winner command
+            if command.startswith('winner '):
+                return self._handle_group_winner_command(original_command[7:])
+
+            # Bonus points command
+            if command.startswith('bonus '):
+                return self._handle_bonus_command(original_command[6:])
             
             return "❌ Unknown command. Type 'wc help' for available commands."
             
@@ -146,6 +150,26 @@ class WCCommandService:
             print(f"Error handling bonus command: {e}")
             return f"❌ Error processing bonus: {str(e)}"
     
+    def _handle_group_winner_command(self, text):
+        """Handle group winner entry: wc winner A England"""
+        parts = text.strip().split(None, 1)
+        if len(parts) < 2:
+            return "❌ Format: wc winner A England"
+
+        group = parts[0].upper()
+        if len(group) != 1 or group not in 'ABCDEFGHIJKL':
+            return "❌ Group must be A–L"
+
+        team = self._parse_team_name(parts[1].strip())
+        if not team:
+            return f"❌ Could not recognise team: {parts[1]}"
+
+        success, message = self.sheets_service.log_group_winner(group, team)
+        if success:
+            self.scoring_service.invalidate_cache()
+            return f"✅ Group {group} winner: {team}"
+        return f"❌ Error: {message}"
+
     def _parse_team_name(self, team_input):
         """Parse team name from input (abbreviation or full name)"""
         team_input = team_input.strip()

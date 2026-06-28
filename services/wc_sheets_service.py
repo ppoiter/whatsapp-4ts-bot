@@ -2,7 +2,7 @@ from google.oauth2.service_account import Credentials
 import gspread
 import os
 from datetime import datetime
-from config.settings import WC_MASTER_SHEET_ID, SCOPES, FIFA_RANK
+from config.settings import WC_MASTER_SHEET_ID, SCOPES, FIFA_RANK, GROUP_TOP_SEEDS
 import re
 
 class WCSheetsService:
@@ -130,8 +130,13 @@ class WCSheetsService:
                     for record in records:
                         if not record.get('Timestamp'):
                             continue
-                            
-                        name = record.get('Your name', '').strip()
+
+                        name = ''
+                        for key in record.keys():
+                            if key.lower().startswith(('your name', 'first name', 'full name', 'name')):
+                                name = record[key].strip()
+                                if name:
+                                    break
                         if not name:
                             continue
                             
@@ -190,6 +195,38 @@ class WCSheetsService:
             print(f"Error getting bonus awards: {e}")
             return []
     
+    def log_group_winner(self, group, team):
+        """Log a group stage winner"""
+        try:
+            sheet = self.get_google_sheet()
+            if not sheet:
+                return False, "Could not connect to sheet"
+            winners_sheet = sheet.worksheet('group_winners')
+            winners_sheet.append_row([group.upper(), team, datetime.now().isoformat()])
+            return True, f"Group {group.upper()} winner logged: {team}"
+        except Exception as e:
+            print(f"Error logging group winner: {e}")
+            return False, str(e)
+
+    def get_group_winners(self):
+        """Get all logged group winners, returning latest entry per group"""
+        try:
+            sheet = self.get_google_sheet()
+            if not sheet:
+                return {}
+            winners_sheet = sheet.worksheet('group_winners')
+            records = winners_sheet.get_all_records()
+            winners = {}
+            for record in records:
+                group = record.get('group', '').upper()
+                team = record.get('team', '')
+                if group and team:
+                    winners[group] = team  # later entries overwrite earlier ones
+            return winners
+        except Exception as e:
+            print(f"Error getting group winners: {e}")
+            return {}
+
     def determine_match_stage_and_matchday(self, match_key):
         """Determine stage and matchday for a given match"""
         # For now, assume all matches are group stage

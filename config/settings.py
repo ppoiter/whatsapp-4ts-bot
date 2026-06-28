@@ -95,6 +95,13 @@ FIFA_RANK = {
 }
 
 # Team abbreviations for parsing WC commands
+# Top-seeded team per group (highest FIFA-ranked) — 1pt for correct pick, 3pt for upset
+GROUP_TOP_SEEDS = {
+    'A': 'Mexico', 'B': 'Switzerland', 'C': 'Brazil', 'D': 'USA',
+    'E': 'Germany', 'F': 'Netherlands', 'G': 'Belgium', 'H': 'Spain',
+    'I': 'France', 'J': 'Argentina', 'K': 'Portugal', 'L': 'England',
+}
+
 TEAM_ABBREVIATIONS = {
     # Common abbreviations
     'ENG': 'England', 'CRO': 'Croatia', 'FRA': 'France', 'ARG': 'Argentina',

@@ -1,5 +1,5 @@
 import re
-from config.settings import FIFA_RANK
+from config.settings import FIFA_RANK, GROUP_TOP_SEEDS
 
 class WCScoringService:
     def __init__(self, sheets_service):
@@ -26,6 +26,7 @@ class WCScoringService:
 
             all_picks = self.sheets_service.get_all_picks()
             all_bonus = self.sheets_service.get_all_bonus_awards()
+            group_winners = self.sheets_service.get_group_winners()
 
             if not all_picks:
                 return "No picks found yet."
@@ -42,6 +43,12 @@ class WCScoringService:
                     if form_num in player_data['forms']:
                         form_picks = player_data['forms'][form_num]['picks']
                         total_score += self._score_group_stage_picks(form_picks, all_results, form_num)
+
+                # Score group winner picks from Form 4
+                if 4 in player_data['forms']:
+                    total_score += self._score_group_winner_picks(
+                        player_data['forms'][4]['picks'], group_winners
+                    )
 
                 # Add bonus points
                 for bonus_award in all_bonus:
@@ -114,6 +121,22 @@ class WCScoringService:
         
         return total_points
     
+    def _score_group_winner_picks(self, form_picks, group_winners):
+        """Score group winner predictions from Form 4. 1pt for top seed, 3pt for upset."""
+        total_points = 0
+        for column_name, pick in form_picks.items():
+            match = re.match(r'Group ([A-L]) Winner', column_name, re.IGNORECASE)
+            if not match or not pick:
+                continue
+            group = match.group(1).upper()
+            actual_winner = group_winners.get(group)
+            if not actual_winner:
+                continue
+            if self.strip_rank(pick) == actual_winner:
+                points = 1 if actual_winner == GROUP_TOP_SEEDS.get(group) else 3
+                total_points += points
+        return total_points
+
     def _score_knockout_picks(self, form_picks, all_results, stage):
         """Score knockout stage predictions (future implementation)"""
         # Placeholder for knockout scoring
@@ -157,41 +180,42 @@ class WCScoringService:
             all_picks = self.sheets_service.get_all_picks()
             all_results = self.sheets_service.get_all_results()
             all_bonus = self.sheets_service.get_all_bonus_awards()
-            
+            group_winners = self.sheets_service.get_group_winners()
+
             if player_name:
-                # Find specific player
                 normalized_target = self.sheets_service.normalize_name(player_name)
                 if normalized_target not in all_picks:
                     return f"Player '{player_name}' not found."
-                
                 return self._get_player_breakdown(
-                    all_picks[normalized_target], all_results, all_bonus, normalized_target
+                    all_picks[normalized_target], all_results, all_bonus, group_winners, normalized_target
                 )
             else:
-                # Return summary for all players
                 return self.calculate_leaderboard()
-                
+
         except Exception as e:
             print(f"Error getting detailed scores: {e}")
             return f"❌ Error getting scores: {str(e)}"
-    
-    def _get_player_breakdown(self, player_data, all_results, all_bonus, normalized_name):
+
+    def _get_player_breakdown(self, player_data, all_results, all_bonus, group_winners, normalized_name):
         """Get detailed score breakdown for a specific player"""
         display_name = player_data['display_name']
         message = f"📊 DETAILED SCORES - {display_name.upper()}\n"
         message += "=" * 30 + "\n\n"
-        
+
         total_score = 0
-        
-        # Group stage scoring
+
         for form_num in [1, 2, 3]:
             if form_num in player_data['forms']:
                 form_picks = player_data['forms'][form_num]['picks']
                 form_score = self._score_group_stage_picks(form_picks, all_results, form_num)
                 total_score += form_score
-                message += f"📋 Form {form_num} (MD{form_num}): {form_score} pts\n"
-        
-        # Bonus points
+                message += f"📋 MD{form_num} picks: {form_score} pts\n"
+
+        if 4 in player_data['forms']:
+            gw_score = self._score_group_winner_picks(player_data['forms'][4]['picks'], group_winners)
+            total_score += gw_score
+            message += f"🏅 Group winners: {gw_score} pts\n"
+
         bonus_total = 0
         bonus_details = []
         for bonus_award in all_bonus:
@@ -200,11 +224,11 @@ class WCScoringService:
                 form = bonus_award.get('form', '')
                 bonus_total += points
                 bonus_details.append(f"Form {form}")
-        
+
         if bonus_total > 0:
-            message += f"🎯 Bonus Points: {bonus_total} pts ({', '.join(bonus_details)})\n"
-        
+            message += f"🎯 Bonus: {bonus_total} pts ({', '.join(bonus_details)})\n"
+
         total_score += bonus_total
         message += f"\n🏆 TOTAL: {total_score} pts"
-        
+
         return message
