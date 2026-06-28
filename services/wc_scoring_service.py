@@ -50,6 +50,13 @@ class WCScoringService:
                         player_data['forms'][4]['picks'], group_winners
                     )
 
+                # Score R32 picks from Forms 5 & 6
+                for form_num in [5, 6]:
+                    if form_num in player_data['forms']:
+                        total_score += self._score_r32_picks(
+                            player_data['forms'][form_num]['picks'], all_results
+                        )
+
                 # Add bonus points
                 for bonus_award in all_bonus:
                     if self.sheets_service.normalize_name(bonus_award.get('player', '')) == normalized_name:
@@ -137,10 +144,30 @@ class WCScoringService:
                 total_points += points
         return total_points
 
-    def _score_knockout_picks(self, form_picks, all_results, stage):
-        """Score knockout stage predictions (future implementation)"""
-        # Placeholder for knockout scoring
-        return 0
+    def _score_r32_picks(self, form_picks, all_results):
+        """Score Round of 32 predictions. 1pt per correct pick."""
+        total_points = 0
+        knockout_results = {
+            r['match_key']: r for r in all_results if r.get('stage') == 'knockout'
+        }
+        for column_name, pick in form_picks.items():
+            if ' vs ' not in column_name or not pick:
+                continue
+            result = knockout_results.get(column_name)
+            if not result:
+                continue
+            home_score = result.get('home_score', 0)
+            away_score = result.get('away_score', 0)
+            teams = column_name.split(' vs ')
+            if home_score > away_score:
+                correct_pick = teams[0]
+            elif away_score > home_score:
+                correct_pick = teams[1]
+            else:
+                continue  # no draw in knockout
+            if pick == correct_pick:
+                total_points += 1
+        return total_points
     
     def _format_leaderboard(self, sorted_players, total_results, latest_result=None):
         """Format leaderboard for WhatsApp display"""
@@ -216,6 +243,14 @@ class WCScoringService:
             total_score += gw_score
             message += f"🏅 Group winners: {gw_score} pts\n"
 
+        r32_score = 0
+        for form_num in [5, 6]:
+            if form_num in player_data['forms']:
+                r32_score += self._score_r32_picks(player_data['forms'][form_num]['picks'], all_results)
+        if r32_score:
+            message += f"⚽ R32 picks: {r32_score} pts\n"
+
+        total_score += r32_score
         bonus_total = 0
         bonus_details = []
         for bonus_award in all_bonus:

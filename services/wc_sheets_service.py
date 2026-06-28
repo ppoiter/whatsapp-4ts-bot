@@ -121,7 +121,7 @@ class WCSheetsService:
             
             all_picks = {}
             
-            for form_num in [1, 2, 3, 4]:
+            for form_num in [1, 2, 3, 4, 5, 6]:
                 tab_name = f'form{form_num}_picks'
                 try:
                     form_sheet = sheet.worksheet(tab_name)
