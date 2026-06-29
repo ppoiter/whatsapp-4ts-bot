@@ -174,10 +174,7 @@ class WCScoringService:
         if not sorted_players:
             return "No players found."
 
-        group_matches_total = 72  # 24 matches × 3 matchdays
-        progress_text = f"({total_results}/{group_matches_total} group results)"
-
-        message = f"🏆 WC 2026 LEADERBOARD {progress_text}\n"
+        message = f"🏆 WC 2026 LEADERBOARD\n"
 
         if latest_result:
             match_key = latest_result.get('match_key', '')
@@ -244,11 +241,13 @@ class WCScoringService:
             message += f"🏅 Group winners: {gw_score} pts\n"
 
         r32_score = 0
-        for form_num in [5, 6]:
-            if form_num in player_data['forms']:
-                r32_score += self._score_r32_picks(player_data['forms'][form_num]['picks'], all_results)
-        if r32_score:
+        if 5 in player_data['forms'] or 6 in player_data['forms']:
+            for form_num in [5, 6]:
+                if form_num in player_data['forms']:
+                    r32_score += self._score_r32_picks(player_data['forms'][form_num]['picks'], all_results)
             message += f"⚽ R32 picks: {r32_score} pts\n"
+        else:
+            message += f"⚽ R32 picks: form not found\n"
 
         total_score += r32_score
         bonus_total = 0
