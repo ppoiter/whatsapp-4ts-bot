@@ -184,7 +184,7 @@ class WCScoringService:
             md_text = f" (MD{md})" if md else ""
             message += f"Last: {match_key} {h}-{a}{md_text}\n"
 
-        message += "=" * 30 + "\n\n"
+        message += "=" * 25 + "\n\n"
 
         for i, (player_name, score) in enumerate(sorted_players, 1):
             if isinstance(score, float) and score.is_integer():
@@ -224,7 +224,7 @@ class WCScoringService:
         """Get detailed score breakdown for a specific player"""
         display_name = player_data['display_name']
         message = f"📊 DETAILED SCORES - {display_name.upper()}\n"
-        message += "=" * 30 + "\n\n"
+        message += "=" * 25 + "\n\n"
 
         total_score = 0
 

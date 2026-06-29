@@ -361,7 +361,7 @@ class GameweekService:
             
             # Build the message
             message = f"📊 PLAYER WEIGHTINGS (GW{gameweek_num})\n"
-            message += "=" * 30 + "\n\n"
+            message += "=" * 25 + "\n\n"
             
             for item in player_weightings:
                 weight = item['weight']
