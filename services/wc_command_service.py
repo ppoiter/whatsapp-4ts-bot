@@ -169,18 +169,20 @@ class WCCommandService:
                 r['match_key']: r for r in all_results if r.get('stage') == 'knockout'
             }
 
-            lines = [f"Knockout results in sheet: {list(knockout_results.keys())}"]
+            lines = [f"KO results: {len(knockout_results)}"]
+            if knockout_results:
+                first_key = next(iter(knockout_results))
+                lines.append(f"Example: '{first_key}'")
 
             for form_num in [5, 6]:
                 if form_num not in player_data['forms']:
                     lines.append(f"Form {form_num}: not found")
                     continue
-                picks = player_data['forms'][form_num]['picks']
-                match_picks = {k: v for k, v in picks.items() if ' vs ' in k}
-                lines.append(f"Form {form_num} match picks: {match_picks}")
-                for col, pick in match_picks.items():
-                    result = knockout_results.get(col)
-                    lines.append(f"  '{col}' → pick='{pick}' result={'FOUND' if result else 'NOT FOUND'}")
+                picks = {k: v for k, v in player_data['forms'][form_num]['picks'].items() if ' vs ' in k}
+                lines.append(f"Form {form_num}: {len(picks)} match picks")
+                for col, pick in list(picks.items())[:3]:
+                    matched = 'Y' if knockout_results.get(col) else 'N'
+                    lines.append(f"  [{matched}] {col} → {pick}")
 
             return "\n".join(lines)
         except Exception as e:
