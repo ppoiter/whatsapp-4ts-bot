@@ -44,6 +44,10 @@ class WCCommandService:
             # Bonus points command
             if command.startswith('bonus '):
                 return self._handle_bonus_command(original_command[6:])
+
+            # Debug R32 scoring
+            if command.startswith('debugr32 '):
+                return self._debug_r32(original_command[9:])
             
             return "❌ Unknown command. Type 'wc help' for available commands."
             
@@ -150,6 +154,38 @@ class WCCommandService:
             print(f"Error handling bonus command: {e}")
             return f"❌ Error processing bonus: {str(e)}"
     
+    def _debug_r32(self, player_name):
+        """Debug R32 scoring for a player"""
+        try:
+            all_picks = self.sheets_service.get_all_picks()
+            all_results = self.sheets_service.get_all_results()
+
+            normalized = self.sheets_service.normalize_name(player_name.strip())
+            if normalized not in all_picks:
+                return f"Player '{player_name}' not found."
+
+            player_data = all_picks[normalized]
+            knockout_results = {
+                r['match_key']: r for r in all_results if r.get('stage') == 'knockout'
+            }
+
+            lines = [f"Knockout results in sheet: {list(knockout_results.keys())}"]
+
+            for form_num in [5, 6]:
+                if form_num not in player_data['forms']:
+                    lines.append(f"Form {form_num}: not found")
+                    continue
+                picks = player_data['forms'][form_num]['picks']
+                match_picks = {k: v for k, v in picks.items() if ' vs ' in k}
+                lines.append(f"Form {form_num} match picks: {match_picks}")
+                for col, pick in match_picks.items():
+                    result = knockout_results.get(col)
+                    lines.append(f"  '{col}' → pick='{pick}' result={'FOUND' if result else 'NOT FOUND'}")
+
+            return "\n".join(lines)
+        except Exception as e:
+            return f"Debug error: {e}"
+
     def _handle_group_winner_command(self, text):
         """Handle group winner entry: wc winner A England"""
         parts = text.strip().split(None, 1)
