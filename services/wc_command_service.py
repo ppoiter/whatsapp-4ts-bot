@@ -155,8 +155,13 @@ class WCCommandService:
             return f"❌ Error processing bonus: {str(e)}"
     
     def _debug_r32(self, player_name):
-        """Debug R32 scoring for a player"""
+        """Debug R32 scoring for a player — form 5 breakdown only"""
         try:
+            abbr = {v: k for k, v in TEAM_ABBREVIATIONS.items()}
+
+            def shorten(team):
+                return abbr.get(team, team[:3].upper())
+
             all_picks = self.sheets_service.get_all_picks()
             all_results = self.sheets_service.get_all_results()
 
@@ -165,25 +170,38 @@ class WCCommandService:
                 return f"Player '{player_name}' not found."
 
             player_data = all_picks[normalized]
+            if 5 not in player_data['forms']:
+                return "Form 5 not found for this player."
+
             knockout_results = {
                 r['match_key']: r for r in all_results if r.get('stage') == 'knockout'
             }
 
-            lines = [f"KO results: {len(knockout_results)}"]
-            if knockout_results:
-                first_key = next(iter(knockout_results))
-                lines.append(f"Example: '{first_key}'")
-
-            for form_num in [5, 6]:
-                if form_num not in player_data['forms']:
-                    lines.append(f"Form {form_num}: not found")
+            picks = {k: v for k, v in player_data['forms'][5]['picks'].items() if ' vs ' in k}
+            lines = [f"R32 breakdown ({player_name}):"]
+            pts = 0
+            for col, pick in picks.items():
+                teams = col.split(' vs ')
+                h_abbr = shorten(teams[0])
+                a_abbr = shorten(teams[1])
+                result = knockout_results.get(col)
+                if not result:
+                    lines.append(f"  {h_abbr} vs {a_abbr}: pick={shorten(pick)} [no result yet]")
                     continue
-                picks = {k: v for k, v in player_data['forms'][form_num]['picks'].items() if ' vs ' in k}
-                lines.append(f"Form {form_num}: {len(picks)} match picks")
-                for col, pick in list(picks.items())[:3]:
-                    matched = 'Y' if knockout_results.get(col) else 'N'
-                    lines.append(f"  [{matched}] {col} → {pick}")
-
+                h = result.get('home_score', 0)
+                a = result.get('away_score', 0)
+                if h > a:
+                    correct = teams[0]
+                elif a > h:
+                    correct = teams[1]
+                else:
+                    correct = 'Draw'
+                got_it = pick == correct
+                if got_it:
+                    pts += 1
+                tick = '✓' if got_it else '✗'
+                lines.append(f"  {tick} {h_abbr} vs {a_abbr} {h}-{a}: picked {shorten(pick)}, correct {shorten(correct)}")
+            lines.append(f"Total: {pts} pts")
             return "\n".join(lines)
         except Exception as e:
             return f"Debug error: {e}"

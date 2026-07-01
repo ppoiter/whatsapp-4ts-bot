@@ -164,7 +164,7 @@ class WCScoringService:
             elif away_score > home_score:
                 correct_pick = teams[1]
             else:
-                continue  # no draw in knockout
+                correct_pick = 'Draw'
             if pick == correct_pick:
                 total_points += 1
         return total_points
