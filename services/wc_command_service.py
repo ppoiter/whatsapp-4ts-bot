@@ -170,38 +170,42 @@ class WCCommandService:
                 return f"Player '{player_name}' not found."
 
             player_data = all_picks[normalized]
-            if 5 not in player_data['forms']:
-                return "Form 5 not found for this player."
-
             knockout_results = {
                 r['match_key']: r for r in all_results if r.get('stage') == 'knockout'
             }
 
-            picks = {k: v for k, v in player_data['forms'][5]['picks'].items() if ' vs ' in k}
             lines = [f"R32 breakdown ({player_name}):"]
-            pts = 0
-            for col, pick in picks.items():
-                teams = col.split(' vs ')
-                h_abbr = shorten(teams[0])
-                a_abbr = shorten(teams[1])
-                result = knockout_results.get(col)
-                if not result:
-                    lines.append(f"  {h_abbr} vs {a_abbr}: pick={shorten(pick)} [no result yet]")
+            total_pts = 0
+
+            for form_num in [5, 6]:
+                if form_num not in player_data['forms']:
+                    lines.append(f"Form {form_num}: not found")
                     continue
-                h = result.get('home_score', 0)
-                a = result.get('away_score', 0)
-                if h > a:
-                    correct = teams[0]
-                elif a > h:
-                    correct = teams[1]
-                else:
-                    correct = 'Draw'
-                got_it = pick == correct
-                if got_it:
-                    pts += 1
-                tick = '✓' if got_it else '✗'
-                lines.append(f"  {tick} {h_abbr} vs {a_abbr} {h}-{a}: picked {shorten(pick)}, correct {shorten(correct)}")
-            lines.append(f"Total: {pts} pts")
+                picks = {k: v for k, v in player_data['forms'][form_num]['picks'].items() if ' vs ' in k}
+                lines.append(f"— Form {form_num} —")
+                for col, pick in picks.items():
+                    teams = col.split(' vs ')
+                    h_abbr = shorten(teams[0])
+                    a_abbr = shorten(teams[1])
+                    result = knockout_results.get(col)
+                    if not result:
+                        lines.append(f"  {h_abbr} vs {a_abbr}: {shorten(pick)} [pending]")
+                        continue
+                    h = result.get('home_score', 0)
+                    a = result.get('away_score', 0)
+                    if h > a:
+                        correct = teams[0]
+                    elif a > h:
+                        correct = teams[1]
+                    else:
+                        correct = 'Draw'
+                    got_it = pick == correct
+                    if got_it:
+                        total_pts += 1
+                    tick = '✓' if got_it else '✗'
+                    lines.append(f"  {tick} {h_abbr} vs {a_abbr} {h}-{a}: {shorten(pick)} (ans:{shorten(correct)})")
+
+            lines.append(f"Total: {total_pts} pts")
             return "\n".join(lines)
         except Exception as e:
             return f"Debug error: {e}"
