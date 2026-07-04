@@ -60,7 +60,7 @@ class WCScoringService:
                 # Add bonus points
                 for bonus_award in all_bonus:
                     if self.sheets_service.normalize_name(bonus_award.get('player', '')) == normalized_name:
-                        total_score += bonus_award.get('points', 0)
+                        total_score += int(bonus_award.get('points', 0) or 0)
 
                 player_scores[display_name] = total_score
 
@@ -254,7 +254,7 @@ class WCScoringService:
         bonus_details = []
         for bonus_award in all_bonus:
             if self.sheets_service.normalize_name(bonus_award.get('player', '')) == normalized_name:
-                points = bonus_award.get('points', 0)
+                points = int(bonus_award.get('points', 0) or 0)
                 form = bonus_award.get('form', '')
                 bonus_total += points
                 bonus_details.append(f"Form {form}")
