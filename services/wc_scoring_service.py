@@ -51,7 +51,7 @@ class WCScoringService:
                     )
 
                 # Score R32 picks from Forms 5 & 6
-                for form_num in [5, 6]:
+                for form_num in [5, 6, 7]:
                     if form_num in player_data['forms']:
                         total_score += self._score_r32_picks(
                             player_data['forms'][form_num]['picks'], all_results
@@ -242,7 +242,7 @@ class WCScoringService:
 
         r32_score = 0
         if 5 in player_data['forms'] or 6 in player_data['forms']:
-            for form_num in [5, 6]:
+            for form_num in [5, 6, 7]:
                 if form_num in player_data['forms']:
                     r32_score += self._score_r32_picks(player_data['forms'][form_num]['picks'], all_results)
             message += f"⚽ R32 picks: {r32_score} pts\n"
