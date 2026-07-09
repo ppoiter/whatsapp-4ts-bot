@@ -48,6 +48,10 @@ class WCCommandService:
             # Debug R32 scoring
             if command.startswith('debugr32 '):
                 return self._debug_r32(original_command[9:])
+
+            # Debug QF scoring
+            if command.startswith('debugqf '):
+                return self._debug_qf(original_command[8:])
             
             return "❌ Unknown command. Type 'wc help' for available commands."
             
@@ -132,10 +136,7 @@ class WCCommandService:
             try:
                 form_num = int(parts[0])
             except ValueError:
-                return "❌ Form number must be a number (1-4)"
-            
-            if form_num not in [1, 2, 3, 4]:
-                return "❌ Form number must be 1, 2, 3, or 4"
+                return "❌ Form number must be a number"
             
             player_names = parts[1:]
             if not player_names:
@@ -204,6 +205,80 @@ class WCCommandService:
                         total_pts += 1
                     tick = '✓' if got_it else '✗'
                     lines.append(f"  {tick} {h_abbr} vs {a_abbr} {h}-{a}: {shorten(pick)} (ans:{shorten(correct)})")
+
+            lines.append(f"Total: {total_pts} pts")
+            return "\n".join(lines)
+        except Exception as e:
+            return f"Debug error: {e}"
+
+    def _debug_qf(self, player_name):
+        """Debug QF score-based scoring for a player"""
+        try:
+            all_picks = self.sheets_service.get_all_picks()
+            all_results = self.sheets_service.get_all_results()
+
+            normalized = self.sheets_service.normalize_name(player_name.strip())
+            if normalized not in all_picks:
+                return f"Player '{player_name}' not found."
+
+            player_data = all_picks[normalized]
+            if 8 not in player_data['forms']:
+                return f"No form 8 picks found for '{player_name}'."
+
+            knockout_results = {
+                r['match_key']: r for r in all_results if r.get('stage') == 'knockout'
+            }
+
+            picks = player_data['forms'][8]['picks']
+            match_scores = {}
+            for col, val in picks.items():
+                m = re.match(r'^(.+? vs .+?) \[(.+?)\]\s*$', col)
+                if not m or val == '' or val is None:
+                    continue
+                match_key = m.group(1).strip()
+                team = m.group(2).strip()
+                if match_key not in match_scores:
+                    match_scores[match_key] = {}
+                try:
+                    match_scores[match_key][team] = int(val)
+                except (ValueError, TypeError):
+                    pass
+
+            lines = [f"QF breakdown ({player_name}):"]
+            total_pts = 0
+
+            for match_key, team_scores in match_scores.items():
+                teams = match_key.split(' vs ')
+                home_team, away_team = teams[0].strip(), teams[1].strip()
+                pred_h = team_scores.get(home_team)
+                pred_a = team_scores.get(away_team)
+                result = knockout_results.get(match_key)
+
+                if pred_h is None or pred_a is None:
+                    lines.append(f"  {match_key}: incomplete pick")
+                    continue
+
+                if not result:
+                    lines.append(f"  {match_key}: {pred_h}-{pred_a} [pending]")
+                    continue
+
+                actual_h = int(result.get('home_score', 0))
+                actual_a = int(result.get('away_score', 0))
+
+                if pred_h == actual_h and pred_a == actual_a:
+                    pts = 2
+                    tick = '✓✓'
+                elif (pred_h > pred_a and actual_h > actual_a) or \
+                     (pred_a > pred_h and actual_a > actual_h) or \
+                     (pred_h == pred_a and actual_h == actual_a):
+                    pts = 1
+                    tick = '✓'
+                else:
+                    pts = 0
+                    tick = '✗'
+
+                total_pts += pts
+                lines.append(f"  {tick} {home_team[:3].upper()} vs {away_team[:3].upper()} {actual_h}-{actual_a}: pick {pred_h}-{pred_a} ({pts}pt)")
 
             lines.append(f"Total: {total_pts} pts")
             return "\n".join(lines)

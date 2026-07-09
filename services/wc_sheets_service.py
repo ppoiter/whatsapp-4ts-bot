@@ -121,7 +121,7 @@ class WCSheetsService:
             
             all_picks = {}
             
-            for form_num in [1, 2, 3, 4, 5, 6, 7]:
+            for form_num in [1, 2, 3, 4, 5, 6, 7, 8]:
                 tab_name = f'form{form_num}_picks'
                 try:
                     form_sheet = sheet.worksheet(tab_name)
@@ -133,7 +133,7 @@ class WCSheetsService:
 
                         name = ''
                         for key in record.keys():
-                            if key.lower().startswith(('your name', 'first name', 'full name', 'name')):
+                            if key.lower().startswith(('your name', 'enter your name', 'first name', 'full name', 'name')):
                                 name = record[key].strip()
                                 if name:
                                     break

@@ -50,12 +50,18 @@ class WCScoringService:
                         player_data['forms'][4]['picks'], group_winners
                     )
 
-                # Score R32 picks from Forms 5 & 6
+                # Score R32 picks from Forms 5, 6, 7
                 for form_num in [5, 6, 7]:
                     if form_num in player_data['forms']:
                         total_score += self._score_r32_picks(
                             player_data['forms'][form_num]['picks'], all_results
                         )
+
+                # Score QF+ score picks from Form 8
+                if 8 in player_data['forms']:
+                    total_score += self._score_qf_picks(
+                        player_data['forms'][8]['picks'], all_results
+                    )
 
                 # Add bonus points
                 for bonus_award in all_bonus:
@@ -169,6 +175,53 @@ class WCScoringService:
                 total_points += 1
         return total_points
     
+    def _score_qf_picks(self, form_picks, all_results):
+        """Score QF+ predictions. 2pts exact score, 1pt correct result but wrong score.
+        Column format: 'France vs Morocco [France]' and 'France vs Morocco [Morocco]'"""
+        total_points = 0
+        knockout_results = {
+            r['match_key']: r for r in all_results if r.get('stage') == 'knockout'
+        }
+
+        # Collect both team scores per match
+        match_scores = {}
+        for column_name, pick in form_picks.items():
+            m = re.match(r'^(.+? vs .+?) \[(.+?)\]\s*$', column_name)
+            if not m or pick == '' or pick is None:
+                continue
+            match_key = m.group(1).strip()
+            team = m.group(2).strip()
+            if match_key not in match_scores:
+                match_scores[match_key] = {}
+            try:
+                match_scores[match_key][team] = int(pick)
+            except (ValueError, TypeError):
+                pass
+
+        for match_key, team_scores in match_scores.items():
+            result = knockout_results.get(match_key)
+            if not result:
+                continue
+            teams = match_key.split(' vs ')
+            if len(teams) != 2:
+                continue
+            home_team, away_team = teams[0].strip(), teams[1].strip()
+            pred_home = team_scores.get(home_team)
+            pred_away = team_scores.get(away_team)
+            if pred_home is None or pred_away is None:
+                continue
+            actual_home = int(result.get('home_score', 0))
+            actual_away = int(result.get('away_score', 0))
+
+            if pred_home == actual_home and pred_away == actual_away:
+                total_points += 2
+            elif (pred_home > pred_away and actual_home > actual_away) or \
+                 (pred_away > pred_home and actual_away > actual_home) or \
+                 (pred_home == pred_away and actual_home == actual_away):
+                total_points += 1
+
+        return total_points
+
     def _format_leaderboard(self, sorted_players, total_results, latest_result=None):
         """Format leaderboard for WhatsApp display"""
         if not sorted_players:
@@ -250,6 +303,12 @@ class WCScoringService:
             message += f"⚽ R32 picks: form not found\n"
 
         total_score += r32_score
+
+        if 8 in player_data['forms']:
+            qf_score = self._score_qf_picks(player_data['forms'][8]['picks'], all_results)
+            total_score += qf_score
+            message += f"🎯 QF scores: {qf_score} pts\n"
+
         bonus_total = 0
         bonus_details = []
         for bonus_award in all_bonus:
