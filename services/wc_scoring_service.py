@@ -57,16 +57,17 @@ class WCScoringService:
                             player_data['forms'][form_num]['picks'], all_results
                         )
 
-                # Score QF+ score picks from Form 8
-                if 8 in player_data['forms']:
-                    total_score += self._score_qf_picks(
-                        player_data['forms'][8]['picks'], all_results
-                    )
+                # Score QF/SF/Final score picks from Forms 8+
+                for form_num in [8, 9]:
+                    if form_num in player_data['forms']:
+                        total_score += self._score_qf_picks(
+                            player_data['forms'][form_num]['picks'], all_results
+                        )
 
                 # Add bonus points
                 for bonus_award in all_bonus:
                     if self.sheets_service.normalize_name(bonus_award.get('player', '')) == normalized_name:
-                        total_score += int(bonus_award.get('points', 0) or 0)
+                        total_score += float(bonus_award.get('points', 0) or 0)
 
                 player_scores[display_name] = total_score
 
@@ -304,16 +305,19 @@ class WCScoringService:
 
         total_score += r32_score
 
-        if 8 in player_data['forms']:
-            qf_score = self._score_qf_picks(player_data['forms'][8]['picks'], all_results)
-            total_score += qf_score
-            message += f"🎯 QF scores: {qf_score} pts\n"
+        form_labels = {8: 'QF', 9: 'SF'}
+        for form_num in [8, 9]:
+            if form_num in player_data['forms']:
+                score = self._score_qf_picks(player_data['forms'][form_num]['picks'], all_results)
+                total_score += score
+                label = form_labels.get(form_num, f'Form {form_num}')
+                message += f"🎯 {label} scores: {score} pts\n"
 
         bonus_total = 0
         bonus_details = []
         for bonus_award in all_bonus:
             if self.sheets_service.normalize_name(bonus_award.get('player', '')) == normalized_name:
-                points = int(bonus_award.get('points', 0) or 0)
+                points = float(bonus_award.get('points', 0) or 0)
                 form = bonus_award.get('form', '')
                 bonus_total += points
                 bonus_details.append(f"Form {form}")

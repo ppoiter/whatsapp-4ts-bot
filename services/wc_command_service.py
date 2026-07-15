@@ -126,31 +126,37 @@ class WCCommandService:
             return f"❌ Error processing result: {str(e)}"
     
     def _handle_bonus_command(self, bonus_text):
-        """Handle bonus points: wc bonus 2 Peter Dave"""
+        """Handle bonus points: wc bonus [FORM_NUM] [POINTS] [PLAYER_NAMES]
+        e.g. wc bonus 8 1 Peter Sam  or  wc bonus 8 0.5 Fraser Will"""
         try:
             parts = bonus_text.strip().split()
-            
-            if len(parts) < 2:
-                return "❌ Invalid format. Use: wc bonus [FORM_NUM] [PLAYER_NAMES]"
-            
+
+            if len(parts) < 3:
+                return "❌ Format: wc bonus [FORM] [POINTS] [PLAYERS]\ne.g. wc bonus 8 1 Peter Sam"
+
             try:
                 form_num = int(parts[0])
             except ValueError:
                 return "❌ Form number must be a number"
-            
-            player_names = parts[1:]
+
+            try:
+                points = float(parts[1])
+            except ValueError:
+                return "❌ Points must be a number (e.g. 1, 2, 0.5)"
+
+            player_names = parts[2:]
             if not player_names:
                 return "❌ Please specify at least one player name"
-            
-            # Award bonus points
-            success, message = self.sheets_service.award_bonus_points(form_num, player_names)
-            
+
+            success, message = self.sheets_service.award_bonus_points(form_num, player_names, points)
+
             if success:
                 self.scoring_service.invalidate_cache()
-                return f"✅ Bonus (Form {form_num}): 2pts awarded to {message.split(': ')[1]}"
+                pts_str = int(points) if points == int(points) else points
+                return f"✅ Bonus (Form {form_num}): {pts_str}pts awarded to {message.split(': ')[1]}"
             else:
                 return f"❌ Error awarding bonus: {message}"
-                
+
         except Exception as e:
             print(f"Error handling bonus command: {e}")
             return f"❌ Error processing bonus: {str(e)}"
