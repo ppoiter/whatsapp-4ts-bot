@@ -58,7 +58,7 @@ class WCScoringService:
                         )
 
                 # Score QF/SF/Final score picks from Forms 8+
-                for form_num in [8, 9]:
+                for form_num in [8, 9, 10]:
                     if form_num in player_data['forms']:
                         total_score += self._score_qf_picks(
                             player_data['forms'][form_num]['picks'], all_results
@@ -305,8 +305,8 @@ class WCScoringService:
 
         total_score += r32_score
 
-        form_labels = {8: 'QF', 9: 'SF'}
-        for form_num in [8, 9]:
+        form_labels = {8: 'QF', 9: 'SF', 10: 'Final'}
+        for form_num in [8, 9, 10]:
             if form_num in player_data['forms']:
                 score = self._score_qf_picks(player_data['forms'][form_num]['picks'], all_results)
                 total_score += score
