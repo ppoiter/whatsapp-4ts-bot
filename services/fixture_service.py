@@ -1,55 +1,98 @@
-from services.sheets_service import SheetsService
+import requests
+import time
 from datetime import datetime
 
+from utils.date_utils import get_uk_timezone
+
+FPL_BASE = "https://fantasy.premierleague.com/api"
+FIXTURES_TTL = 3600      # cache fixtures per gameweek for 1 hour
+BOOTSTRAP_TTL = 86400    # cache the team id -> name map for 1 day
+
+
 class FixtureService:
+    """Reads Premier League fixtures from the free, key-less Fantasy Premier
+    League API. Fixtures are grouped by gameweek ("event"), which maps
+    directly onto this bot's gameweek numbering.
+    """
+
     def __init__(self):
-        self.sheets_service = SheetsService()
-    
+        self._teams = None            # {team_id: team_name}
+        self._teams_fetched_at = 0.0
+        self._fixtures_cache = {}     # {gameweek: (fetched_at, [fixtures])}
+
+    def _get_team_map(self):
+        """Fetch and cache the team id -> name map from bootstrap-static."""
+        now = time.monotonic()
+        if self._teams is not None and (now - self._teams_fetched_at) < BOOTSTRAP_TTL:
+            return self._teams
+
+        resp = requests.get(f"{FPL_BASE}/bootstrap-static/", timeout=10)
+        resp.raise_for_status()
+        teams = resp.json().get('teams', [])
+        self._teams = {t['id']: t['name'] for t in teams}
+        self._teams_fetched_at = now
+        return self._teams
+
     def get_fixtures_for_gameweek(self, gameweek_num):
-        """Get all fixtures for a specific gameweek"""
+        """Return a list of fixture dicts for the given gameweek.
+
+        Results are cached for FIXTURES_TTL seconds. On any API error this
+        returns an empty list.
+        """
+        now = time.monotonic()
+        cached = self._fixtures_cache.get(gameweek_num)
+        if cached and (now - cached[0]) < FIXTURES_TTL:
+            return cached[1]
+
         try:
-            sheet = self.sheets_service.get_google_sheet()
-            if not sheet:
-                return []
-            
-            # Get or create Fixtures worksheet
-            try:
-                fixtures_sheet = sheet.spreadsheet.worksheet("Fixtures")
-            except:
-                return []
-            
-            all_records = fixtures_sheet.get_all_records()
-            gameweek_fixtures = []
-            
-            for record in all_records:
-                if str(record.get('Gameweek')) == str(gameweek_num):
-                    fixture = {
-                        'gameweek': record.get('Gameweek'),
-                        'date': record.get('Date'),
-                        'time': record.get('Time'),
-                        'home_team': record.get('Home Team'),
-                        'away_team': record.get('Away Team'),
-                        'status': record.get('Status', 'Scheduled')
-                    }
-                    gameweek_fixtures.append(fixture)
-            
-            # Sort by date and time
-            gameweek_fixtures.sort(key=lambda x: f"{x['date']} {x['time']}")
-            return gameweek_fixtures
-            
+            teams = self._get_team_map()
+            resp = requests.get(
+                f"{FPL_BASE}/fixtures/",
+                params={'event': gameweek_num},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            raw_fixtures = resp.json()
         except Exception as e:
-            print(f"Error getting fixtures: {e}")
+            print(f"Error fetching fixtures from FPL API: {e}")
             return []
-    
+
+        uk_tz = get_uk_timezone()
+        fixtures = []
+        for f in raw_fixtures:
+            kickoff = f.get('kickoff_time')
+            if kickoff:
+                # kickoff_time is UTC ISO8601, e.g. "2026-08-21T19:00:00Z"
+                dt_uk = datetime.fromisoformat(kickoff.replace('Z', '+00:00')).astimezone(uk_tz)
+                date_str = dt_uk.strftime('%Y-%m-%d')
+                time_str = dt_uk.strftime('%H:%M')
+            else:
+                # Fixture scheduled but kickoff not yet confirmed
+                date_str = ''
+                time_str = 'TBC'
+
+            fixtures.append({
+                'gameweek': f.get('event'),
+                'date': date_str,
+                'time': time_str,
+                'home_team': teams.get(f.get('team_h'), '?'),
+                'away_team': teams.get(f.get('team_a'), '?'),
+                'status': 'Finished' if f.get('finished') else 'Scheduled',
+            })
+
+        fixtures.sort(key=lambda x: f"{x['date']} {x['time']}")
+        self._fixtures_cache[gameweek_num] = (now, fixtures)
+        return fixtures
+
     def format_fixtures_message(self, gameweek_num):
         """Format fixtures for WhatsApp message"""
         fixtures = self.get_fixtures_for_gameweek(gameweek_num)
-        
+
         if not fixtures:
             return f"No fixtures found for Gameweek {gameweek_num}"
-        
+
         message = ""
-        
+
         current_date = ""
         for fixture in fixtures:
             # Group by date
@@ -61,65 +104,14 @@ class FixtureService:
                     date_obj = datetime.strptime(fixture_date, '%Y-%m-%d')
                     formatted_date = date_obj.strftime('%A, %d %B')
                     message += f"{formatted_date}\n"
-                except:
+                except ValueError:
                     message += f"{fixture_date}\n"
-            
+
             # Add fixture
-            time = fixture['time']
+            time_str = fixture['time']
             home = fixture['home_team']
             away = fixture['away_team']
-            
-            message += f"{time} - {home} vs {away}\n"
-        
+
+            message += f"{time_str} - {home} vs {away}\n"
+
         return message
-    
-    def setup_fixtures_sheet(self):
-        """Set up the Fixtures sheet with headers (run once)"""
-        try:
-            sheet = self.sheets_service.get_google_sheet()
-            if not sheet:
-                return False, "Could not connect to Google Sheets"
-            
-            # Create Fixtures worksheet if it doesn't exist
-            try:
-                fixtures_sheet = sheet.spreadsheet.worksheet("Fixtures")
-                print("Fixtures sheet already exists")
-                return True, "Fixtures sheet already exists"
-            except:
-                # Create the sheet
-                fixtures_sheet = sheet.spreadsheet.add_worksheet(title="Fixtures", rows=500, cols=10)
-                headers = ['Gameweek', 'Date', 'Time', 'Home Team', 'Away Team', 'Status']
-                fixtures_sheet.insert_row(headers, 1)
-                print("Created Fixtures sheet with headers")
-                return True, "Created Fixtures sheet with headers"
-                
-        except Exception as e:
-            print(f"Error setting up fixtures sheet: {e}")
-            return False, str(e)
-    
-    def add_fixture(self, gameweek_num, date, time, home_team, away_team, status='Scheduled'):
-        """Add a single fixture to the sheet"""
-        try:
-            sheet = self.sheets_service.get_google_sheet()
-            if not sheet:
-                return False, "Could not connect to Google Sheets"
-            
-            # Get Fixtures worksheet
-            try:
-                fixtures_sheet = sheet.spreadsheet.worksheet("Fixtures")
-            except:
-                # Create sheet if it doesn't exist
-                setup_success, setup_msg = self.setup_fixtures_sheet()
-                if not setup_success:
-                    return False, setup_msg
-                fixtures_sheet = sheet.spreadsheet.worksheet("Fixtures")
-            
-            # Add fixture
-            fixture_data = [gameweek_num, date, time, home_team, away_team, status]
-            fixtures_sheet.append_row(fixture_data)
-            
-            return True, f"Added fixture: {home_team} vs {away_team}"
-            
-        except Exception as e:
-            print(f"Error adding fixture: {e}")
-            return False, str(e)

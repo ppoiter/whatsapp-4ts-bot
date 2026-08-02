@@ -210,9 +210,6 @@ def initialize_app():
     # Setup User Status sheet
     sheets_service.setup_user_status_sheet()
 
-    # Setup Fixtures sheet
-    fixture_service.setup_fixtures_sheet()
-
     # Start the deadline summary scheduler
     summary_scheduler = scheduler_service.schedule_deadline_summaries()
     summary_scheduler.start()
