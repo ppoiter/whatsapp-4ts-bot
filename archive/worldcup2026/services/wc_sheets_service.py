@@ -2,7 +2,8 @@ from google.oauth2.service_account import Credentials
 import gspread
 import os
 from datetime import datetime
-from config.settings import WC_MASTER_SHEET_ID, SCOPES, FIFA_RANK, GROUP_TOP_SEEDS
+from config.settings import SCOPES
+from config.wc_settings import WC_MASTER_SHEET_ID, FIFA_RANK, GROUP_TOP_SEEDS
 import re
 
 class WCSheetsService:

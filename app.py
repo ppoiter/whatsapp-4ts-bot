@@ -1,6 +1,7 @@
 from flask import Flask, request
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
+import atexit
 import os
 
 from config.settings import ADMIN_PHONE, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, USER_MAP
@@ -194,13 +195,21 @@ def gameweek_info():
     else:
         return {'status': 'no_active_gameweek'}
 
-if __name__ == '__main__':
+def initialize_app():
+    """One-time startup: sheet setup + deadline summary scheduler.
+
+    Runs at import time so it executes under gunicorn (gunicorn app:app),
+    not only when this module is run directly. Returns the started scheduler.
+
+    NOTE: run with a single gunicorn worker (the default). Multiple workers
+    would each start their own scheduler and send duplicate summaries.
+    """
     # Setup Google Sheets headers
     sheets_service.setup_google_sheet_headers()
-    
+
     # Setup User Status sheet
     sheets_service.setup_user_status_sheet()
-    
+
     # Setup Fixtures sheet
     fixture_service.setup_fixtures_sheet()
 
@@ -208,10 +217,16 @@ if __name__ == '__main__':
     summary_scheduler = scheduler_service.schedule_deadline_summaries()
     summary_scheduler.start()
     print("Summary scheduler started")
-    
-    # Keep schedulers running with the app
-    try:
-        port = int(os.environ.get('PORT', 5000))
-        app.run(host='0.0.0.0', port=port, debug=os.environ.get('DEBUG', 'False').lower() == 'true')
-    except (KeyboardInterrupt, SystemExit):
-        summary_scheduler.shutdown()
+
+    # Ensure the scheduler shuts down cleanly when the process exits
+    atexit.register(lambda: summary_scheduler.shutdown(wait=False))
+
+    return summary_scheduler
+
+
+# Run startup at import time so it works under gunicorn as well as `python app.py`
+summary_scheduler = initialize_app()
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=os.environ.get('DEBUG', 'False').lower() == 'true')

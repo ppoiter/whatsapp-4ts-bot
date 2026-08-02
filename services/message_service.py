@@ -20,7 +20,7 @@ class MessageService:
                 now = datetime.now(uk_tz).replace(tzinfo=None)
                 
                 # Check recent gameweeks (within 24 hours of deadline)
-                for gw_num, start_date, deadline in GAMEWEEK_SCHEDULE:
+                for gw_num, start_date, deadline, end_time in GAMEWEEK_SCHEDULE:
                     uk_deadline = uk_tz.localize(deadline).replace(tzinfo=None)
                     time_since_deadline = now - uk_deadline
                     

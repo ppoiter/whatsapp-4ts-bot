@@ -12,7 +12,7 @@ class SchedulerService:
         """Schedule summary messages for all gameweek deadlines"""
         scheduler = BackgroundScheduler(timezone=get_uk_timezone())
         
-        for gw_num, start_date, deadline in GAMEWEEK_SCHEDULE:
+        for gw_num, start_date, deadline, end_time in GAMEWEEK_SCHEDULE:
             # Schedule summary 1 minute after deadline
             summary_time = deadline + timedelta(minutes=1)
             

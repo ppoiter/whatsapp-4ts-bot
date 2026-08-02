@@ -1,6 +1,7 @@
 import re
 from fuzzywuzzy import fuzz
-from config.settings import ADMIN_PHONE, TEAM_ABBREVIATIONS, FIFA_RANK
+from config.settings import ADMIN_PHONE
+from config.wc_settings import TEAM_ABBREVIATIONS, FIFA_RANK
 from services.wc_scoring_service import WCScoringService
 
 class WCCommandService:

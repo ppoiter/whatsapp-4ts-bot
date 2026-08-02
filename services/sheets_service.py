@@ -3,13 +3,17 @@ import gspread
 import os
 from datetime import datetime
 from config.settings import SPREADSHEET_ID, SCOPES, USER_MAP
+from models.picks import PlayerPick
 
 class SheetsService:
     def __init__(self):
         self.user_map = USER_MAP
-    
+        self._sheet = None
+
     def get_google_sheet(self):
-        """Initialize Google Sheets connection"""
+        """Initialize Google Sheets connection (cached after first call)"""
+        if self._sheet is not None:
+            return self._sheet
         try:
             creds = Credentials.from_service_account_info({
                 "type": "service_account",
@@ -21,9 +25,10 @@ class SheetsService:
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
             }, scopes=SCOPES)
-            
+
             gc = gspread.authorize(creds)
-            return gc.open_by_key(SPREADSHEET_ID).sheet1
+            self._sheet = gc.open_by_key(SPREADSHEET_ID).sheet1
+            return self._sheet
         except Exception as e:
             print(f"Error connecting to Google Sheets: {e}")
             return None
@@ -52,26 +57,17 @@ class SheetsService:
                 raise Exception("Could not connect to Google Sheets")
             
             user_id = self.user_map.get(phone_number, phone_number)
-            
+
             # Always add as new row (duplicates allowed)
-            # Prepare row data
-            row_data = [
-                datetime.now().isoformat(),  # Timestamp
-                phone_number,                # Phone Number
-                user_id,                     # User ID
-                gameweek_num,               # Gameweek
-                deadline.strftime("%Y-%m-%d %H:%M"),  # Deadline
-                players[0] if len(players) > 0 else '',  # Player 1
-                players[1] if len(players) > 1 else '',  # Player 2
-                players[2] if len(players) > 2 else '',  # Player 3
-                players[3] if len(players) > 3 else '',  # Player 4
-                players[4] if len(players) > 4 else '',  # Player 5
-                players[5] if len(players) > 5 else '',  # Player 6
-                players[6] if len(players) > 6 else '',  # Player 7
-                players[7] if len(players) > 7 else '',  # Player 8
-            ]
-            
-            sheet.append_row(row_data)
+            pick = PlayerPick(
+                phone_number=phone_number,
+                user_name=user_id,
+                gameweek=gameweek_num,
+                players=players,
+                timestamp=datetime.now(),
+                deadline=deadline,
+            )
+            sheet.append_row(pick.to_sheet_row())
             print(f"Added GW{gameweek_num} picks for {user_id}: {', '.join(players)}")
             
             # Also update User Status sheet

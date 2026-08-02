@@ -1,5 +1,5 @@
 import re
-from config.settings import FIFA_RANK, GROUP_TOP_SEEDS
+from config.wc_settings import FIFA_RANK, GROUP_TOP_SEEDS
 
 class WCScoringService:
     def __init__(self, sheets_service):
