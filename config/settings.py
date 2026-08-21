@@ -56,7 +56,7 @@ GAMEWEEK_SCHEDULE = [
 
 # User mapping
 USER_MAP = {
-    # "+447387303123": "Aaron",
+    "+447387303123": "Aaron",
     # "+16043175991": "Adam",
     "+64272806500": "Aubrey",
     "+31618271215": "Ben",
