@@ -116,6 +116,12 @@ def whatsapp_webhook():
                     f"🎯 {', '.join(players)}\n"
                     f"⏰ Deadline: {deadline_str}"
                 )
+                # Easter egg: Delap has been picked
+                if any('delap' in p.lower() for p in players):
+                    response_text = (
+                        "You have picked Delap to score. Are you sure you dont want to reconsider? Own goals don't count\n\n"
+                        + response_text
+                    )
             else:
                 response_text = "❌ Sorry, there was an error saving your picks. Please try again."
         else:
