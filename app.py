@@ -119,7 +119,7 @@ def whatsapp_webhook():
                 # Easter egg: Delap has been picked
                 if any('delap' in p.lower() for p in players):
                     response_text = (
-                        "You have picked Delap to score. Are you sure you dont want to reconsider? Own goals don't count\n\n"
+                        "You have picked Delap to score. Are you sure? Own goals don't count\n\n"
                         + response_text
                     )
             else:
